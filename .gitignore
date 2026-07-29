@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.next/
+.vinext/
+.wrangler/
+.env
+.env.local
+*.db
+*.sqlite
+*.sqlite3
+data/runtime/
