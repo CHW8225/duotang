@@ -11,4 +11,5 @@ dist/
 *.db
 *.sqlite
 *.sqlite3
+tsconfig.tsbuildinfo
 data/runtime/
