@@ -18,7 +18,7 @@ function runtimeFilePath(filename: RuntimeFile) {
     : join(/* turbopackIgnore: true */ directory, "admin-sessions.json");
 }
 
-export async function readRuntimeJson<T>(filename: RuntimeFile, createInitialData: () => T): Promise<T> {
+async function readOrInitializeRuntimeJson<T>(filename: RuntimeFile, createInitialData: () => T): Promise<T> {
   const filePath = runtimeFilePath(filename);
   try {
     return JSON.parse(await readFile(filePath, "utf8")) as T;
@@ -30,7 +30,7 @@ export async function readRuntimeJson<T>(filename: RuntimeFile, createInitialDat
   }
 }
 
-export async function writeRuntimeJson<T>(filename: RuntimeFile, data: T) {
+async function writeRuntimeJson<T>(filename: RuntimeFile, data: T) {
   const filePath = runtimeFilePath(filename);
   await mkdir(runtimeDirectory(), { recursive: true });
   const temporaryPath = `${filePath}.${randomUUID()}.tmp`;
@@ -44,17 +44,25 @@ export async function writeRuntimeJson<T>(filename: RuntimeFile, data: T) {
   }
 }
 
+function enqueueRuntimeFileOperation<Result>(filename: RuntimeFile, operation: () => Promise<Result>): Promise<Result> {
+  const previous = writeQueues.get(filename) ?? Promise.resolve();
+  const task = previous.catch(() => undefined).then(operation);
+  writeQueues.set(filename, task.then(() => undefined, () => undefined));
+  return task;
+}
+
+export function readRuntimeJson<T>(filename: RuntimeFile, createInitialData: () => T): Promise<T> {
+  return enqueueRuntimeFileOperation(filename, () => readOrInitializeRuntimeJson(filename, createInitialData));
+}
+
 export async function updateRuntimeJson<T, Result>(
   filename: RuntimeFile,
   createInitialData: () => T,
   update: (data: T) => UpdateResult<T, Result>,
 ): Promise<Result> {
-  const previous = writeQueues.get(filename) ?? Promise.resolve();
-  const task = previous.catch(() => undefined).then(async () => {
-    const updated = update(await readRuntimeJson(filename, createInitialData));
+  return enqueueRuntimeFileOperation(filename, async () => {
+    const updated = update(await readOrInitializeRuntimeJson(filename, createInitialData));
     await writeRuntimeJson(filename, updated.data);
     return updated.result;
   });
-  writeQueues.set(filename, task.then(() => undefined, () => undefined));
-  return task;
 }

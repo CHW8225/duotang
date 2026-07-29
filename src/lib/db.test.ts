@@ -21,6 +21,21 @@ async function useTemporaryRuntimeDirectory() {
 }
 
 describe("runtime record database", () => {
+  it("does not overwrite a concurrent first update with seed data", async () => {
+    await useTemporaryRuntimeDirectory();
+    const { readRuntimeJson, updateRuntimeJson } = await import("./runtime-store");
+
+    await Promise.all([
+      readRuntimeJson("admin-sessions.json", () => ["seed"]),
+      updateRuntimeJson("admin-sessions.json", () => ["seed"], () => ({
+        data: ["created"],
+        result: undefined,
+      })),
+    ]);
+
+    await expect(readRuntimeJson("admin-sessions.json", () => [])).resolves.toEqual(["created"]);
+  });
+
   it("keeps created records after a module-like reload", async () => {
     await useTemporaryRuntimeDirectory();
     const database = await import("./db");
