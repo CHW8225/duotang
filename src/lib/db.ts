@@ -37,7 +37,8 @@ export async function updateRecord(
   return updateRuntimeJson(RECORD_STORE_FILE, seedRecords, (records) => {
     const existing = records.find((record) => record.id === id);
     if (!existing) return { data: records, result: null };
-    const updated = { ...existing, ...input, id, updated_at: new Date().toISOString() };
+    const { id: _inputId, created_at: _createdAt, updated_at: _updatedAt, data_quality_flags: _qualityFlags, ...editableFields } = input;
+    const updated = { ...existing, ...editableFields, id, updated_at: new Date().toISOString() };
     updated.data_quality_flags = computeQualityFlags(updated, new Date().getFullYear());
     return { data: records.map((record) => record.id === id ? updated : record), result: updated };
   });

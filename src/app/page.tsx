@@ -4,6 +4,8 @@ import { SummaryMetric } from "@/components/SummaryMetric";
 import { getRecords } from "@/lib/db";
 import { topValues } from "@/lib/public-data";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const records = await getRecords();
   const summaries: Array<[string, Array<[string, number]>]> = [

@@ -18,5 +18,14 @@ function recordFromFormData(formData: FormData): PolysaccharideRecord {
   }
   return { ...values, id: "", publication_year: publicationYear, review_status: reviewStatus, data_quality_flags: [], created_at: "", updated_at: "" };
 }
-export async function createRecordAction(formData: FormData) { await requireAdmin(); const record = await createRecord(recordFromFormData(formData)); revalidatePath("/admin"); revalidatePath("/admin/records"); redirect(`/admin/records/${record.id}/edit`); }
-export async function updateRecordAction(id: string, formData: FormData) { await requireAdmin(); const record = await updateRecord(id, recordFromFormData(formData)); if (!record) redirect("/admin/records"); revalidatePath("/admin"); revalidatePath("/admin/records"); revalidatePath(`/admin/records/${id}/edit`); redirect(`/admin/records/${id}/edit`); }
+function revalidateRecordPaths(id: string) {
+  revalidatePath("/");
+  revalidatePath("/database");
+  revalidatePath("/quality");
+  revalidatePath(`/records/${id}`);
+  revalidatePath("/admin");
+  revalidatePath("/admin/records");
+  revalidatePath(`/admin/records/${id}/edit`);
+}
+export async function createRecordAction(formData: FormData) { await requireAdmin(); const record = await createRecord(recordFromFormData(formData)); revalidateRecordPaths(record.id); redirect(`/admin/records/${record.id}/edit`); }
+export async function updateRecordAction(id: string, formData: FormData) { await requireAdmin(); const record = await updateRecord(id, recordFromFormData(formData)); if (!record) redirect("/admin/records"); revalidateRecordPaths(record.id); redirect(`/admin/records/${record.id}/edit`); }

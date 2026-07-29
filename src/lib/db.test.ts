@@ -55,4 +55,28 @@ describe("runtime record database", () => {
       standard_name: "Persisted record",
     });
   });
+
+  it("preserves created_at when an update includes form management values", async () => {
+    await useTemporaryRuntimeDirectory();
+    const database = await import("./db");
+    const [seedRecord] = await database.getRecords();
+    const created = await database.createRecord({
+      ...seedRecord,
+      id: "created-at-record",
+      created_at: "",
+      updated_at: "",
+    });
+
+    const updated = await database.updateRecord(created.id, {
+      standard_name: "Updated record",
+      created_at: "",
+      updated_at: "",
+      data_quality_flags: [],
+    });
+
+    expect(updated).toMatchObject({
+      standard_name: "Updated record",
+      created_at: created.created_at,
+    });
+  });
 });

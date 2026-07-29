@@ -5,6 +5,8 @@ import { RecordDetailSections } from "@/components/RecordDetailSections";
 import { QualityBadge } from "@/components/QualityBadge";
 import { getRecordById } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function RecordPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const record = await getRecordById(id);

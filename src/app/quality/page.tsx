@@ -4,6 +4,8 @@ import { getRecords } from "@/lib/db";
 import { QUALITY_FLAG_LABELS, type QualityFlag } from "@/lib/quality";
 import { countQualityFlags, futureYearRecords } from "@/lib/public-data";
 
+export const dynamic = "force-dynamic";
+
 export default async function QualityPage() {
   const records = await getRecords();
   const flagCounts = countQualityFlags(records);
