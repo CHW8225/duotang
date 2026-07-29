@@ -43,7 +43,7 @@ function RecordLinks({ records }: { records: Awaited<ReturnType<typeof getRecord
         <li key={record.id}>
           <div>
             <strong>{record.standard_name || record.english_name || record.id}</strong>
-            <span>{record.publication_year ?? "No year"} · {record.data_quality_flags.length} flags</span>
+            <span>{record.publication_year ?? "No year"} | {record.data_quality_flags.length} flags</span>
           </div>
           <Link className="text-link" href={`/records/${record.id}`}>View record</Link>
         </li>
