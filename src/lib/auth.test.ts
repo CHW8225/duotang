@@ -1,13 +1,18 @@
 import { randomBytes, scryptSync } from "node:crypto";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { isAdminConfigured, verifyAdminPassword } from "./auth";
+import { createStoredAdminSession, getStoredAdminSession, isAdminConfigured, verifyAdminPassword } from "./auth";
 
 const environment = { ...process.env };
+const runtimeDirectories: string[] = [];
 
-afterEach(() => {
+afterEach(async () => {
   process.env = { ...environment };
+  await Promise.all(runtimeDirectories.splice(0).map((directory) => rm(directory, { force: true, recursive: true })));
 });
 
 function configureAdmin(password = "correct-password") {
@@ -16,6 +21,12 @@ function configureAdmin(password = "correct-password") {
   process.env.ADMIN_USERNAME = "administrator";
   process.env.ADMIN_PASSWORD_HASH = `scrypt$16384$8$1$${salt}$${hash}`;
   process.env.SESSION_SECRET = "test-session-secret";
+}
+
+async function useTemporaryRuntimeDirectory() {
+  const directory = await mkdtemp(join(tmpdir(), "polysaccharide-session-"));
+  runtimeDirectories.push(directory);
+  process.env.RUNTIME_DATA_DIR = directory;
 }
 
 describe("admin authentication", () => {
@@ -41,5 +52,18 @@ describe("admin authentication", () => {
     process.env.SESSION_SECRET = "test-session-secret";
 
     await expect(verifyAdminPassword("administrator", "correct-password")).resolves.toBe(false);
+  });
+
+  it("stores sessions server-side and resolves them from an opaque id", async () => {
+    configureAdmin();
+    await useTemporaryRuntimeDirectory();
+
+    const session = await createStoredAdminSession("administrator");
+
+    expect(session?.id).toHaveLength(43);
+    await expect(getStoredAdminSession(session?.id ?? "")).resolves.toMatchObject({
+      username: "administrator",
+      authenticatedAt: expect.any(String),
+    });
   });
 });

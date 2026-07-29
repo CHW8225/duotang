@@ -1,13 +1,16 @@
-import { createHmac, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { readRuntimeJson, updateRuntimeJson } from "./runtime-store";
+
 export type AdminSession = { username: string; authenticatedAt: string };
-type SessionPayload = AdminSession & { expiresAt: string };
+export type StoredAdminSession = AdminSession & { id: string; expiresAt: string };
 
 const SESSION_COOKIE = "polysaccharide_admin_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
+const SESSION_STORE_FILE = "admin-sessions.json";
 
 export function isAdminConfigured() {
   return Boolean(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD_HASH && process.env.SESSION_SECRET);
@@ -32,36 +35,43 @@ export async function verifyAdminPassword(username: string, password: string) {
   } catch { return false; }
 }
 
-function sign(value: string) {
-  return createHmac("sha256", process.env.SESSION_SECRET ?? "").update(value).digest("base64url");
+function currentSessions(sessions: StoredAdminSession[]) {
+  return sessions.filter((session) => new Date(session.expiresAt).getTime() > Date.now());
 }
 
-function encodeSession(session: SessionPayload) {
-  const payload = Buffer.from(JSON.stringify(session)).toString("base64url");
-  return `${payload}.${sign(payload)}`;
+export async function createStoredAdminSession(username: string): Promise<StoredAdminSession | null> {
+  if (!isAdminConfigured() || username !== process.env.ADMIN_USERNAME) return null;
+  const authenticatedAt = new Date();
+  const session = {
+    id: randomBytes(32).toString("base64url"),
+    username,
+    authenticatedAt: authenticatedAt.toISOString(),
+    expiresAt: new Date(authenticatedAt.getTime() + SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
+  };
+  return updateRuntimeJson(SESSION_STORE_FILE, () => [] as StoredAdminSession[], (sessions) => ({
+    data: [...currentSessions(sessions), session],
+    result: session,
+  }));
 }
 
-function decodeSession(value: string | undefined): AdminSession | null {
-  if (!value || !isAdminConfigured()) return null;
-  const [payload, signature] = value.split(".");
-  if (!payload || !signature || signature !== sign(payload)) return null;
-  try {
-    const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as SessionPayload;
-    if (session.username !== process.env.ADMIN_USERNAME || !session.authenticatedAt || !session.expiresAt || new Date(session.expiresAt).getTime() <= Date.now()) return null;
-    return { username: session.username, authenticatedAt: session.authenticatedAt };
-  } catch { return null; }
+export async function getStoredAdminSession(id: string): Promise<StoredAdminSession | null> {
+  if (!id || !isAdminConfigured()) return null;
+  const sessions = await readRuntimeJson(SESSION_STORE_FILE, () => [] as StoredAdminSession[]);
+  const session = currentSessions(sessions).find((candidate) => candidate.id === id) ?? null;
+  return session?.username === process.env.ADMIN_USERNAME ? session : null;
 }
 
 export async function createAdminSession(username: string) {
   if (!isAdminConfigured() || username !== process.env.ADMIN_USERNAME) return;
-  const authenticatedAt = new Date();
-  const expiresAt = new Date(authenticatedAt.getTime() + SESSION_MAX_AGE_SECONDS * 1000);
+  const session = await createStoredAdminSession(username);
+  if (!session) return;
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, encodeSession({ username, authenticatedAt: authenticatedAt.toISOString(), expiresAt: expiresAt.toISOString() }), { httpOnly: true, maxAge: SESSION_MAX_AGE_SECONDS, path: "/", sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+  cookieStore.set(SESSION_COOKIE, session.id, { httpOnly: true, maxAge: SESSION_MAX_AGE_SECONDS, path: "/", sameSite: "lax", secure: process.env.NODE_ENV === "production" });
 }
 
 export async function getAdminSession() {
-  return decodeSession((await cookies()).get(SESSION_COOKIE)?.value);
+  const session = await getStoredAdminSession((await cookies()).get(SESSION_COOKIE)?.value ?? "");
+  return session ? { username: session.username, authenticatedAt: session.authenticatedAt } : null;
 }
 
 export async function requireAdmin() {
