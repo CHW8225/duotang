@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -9,6 +8,8 @@ SOURCE = ROOT / "多糖数据填写所有.xlsx"
 SHEET_NAME = "单表导入模板"
 OUTPUT = ROOT / "data" / "import" / "polysaccharide-records.json"
 CURRENT_YEAR = 2026
+# Import output is a tracked seed dataset, so its provenance timestamp must be stable.
+IMPORT_TIMESTAMP = "2026-07-29T13:30:33.168228+00:00"
 
 COLUMN_KEYS = [
     "upload_id", "standard_name", "english_name", "aliases", "ref_id",
@@ -77,15 +78,14 @@ def main() -> None:
         raise ValueError(f"expected {len(COLUMN_KEYS)} columns, found {len(dataframe.columns)}")
 
     records: list[dict[str, object]] = []
-    now = datetime.now(timezone.utc).isoformat()
     for index, row in dataframe.iterrows():
         record: dict[str, object] = {"id": f"poly-{index + 1:04d}"}
         for position, key in enumerate(COLUMN_KEYS):
             value = row.iloc[position]
             record[key] = parse_year(value) if key == "publication_year" else clean(value)
         record["review_status"] = normalize_status(record["review_status"])
-        record["created_at"] = now
-        record["updated_at"] = now
+        record["created_at"] = IMPORT_TIMESTAMP
+        record["updated_at"] = IMPORT_TIMESTAMP
         record["data_quality_flags"] = quality_flags(record)
         records.append(record)
 
