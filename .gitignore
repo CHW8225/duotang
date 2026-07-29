@@ -3,8 +3,11 @@ dist/
 .next/
 .vinext/
 .wrangler/
+.worktrees/
 .env
 .env.local
+*.xlsx
+*.xls
 *.db
 *.sqlite
 *.sqlite3
