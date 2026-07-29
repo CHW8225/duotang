@@ -25,3 +25,7 @@ export function countQualityFlags(records: PolysaccharideRecord[]): Record<strin
     return counts;
   }, {});
 }
+
+export function futureYearRecords(records: PolysaccharideRecord[], currentYear: number) {
+  return records.filter((record) => (record.publication_year ?? 0) > currentYear);
+}

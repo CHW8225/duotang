@@ -21,7 +21,13 @@ export function RecordTable({ records }: { records: PolysaccharideRecord[] }) {
           </tr>
         </thead>
         <tbody>
-          {records.map((record) => (
+          {records.length === 0 ? (
+            <tr>
+              <td className="record-table__empty" colSpan={9}>
+                No records match the current filters. Adjust or reset the filters to continue.
+              </td>
+            </tr>
+          ) : records.map((record) => (
             <tr key={record.id}>
               <td className="record-table__primary">{record.standard_name || "Not recorded"}</td>
               <td>{record.english_name || "Not recorded"}</td>
