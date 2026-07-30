@@ -17,7 +17,7 @@ export function isAdminConfigured() {
 }
 
 function parsePasswordHash(value: string) {
-  const [algorithm, cost, blockSize, parallelization, salt, derivedKey] = value.split("$");
+  const [algorithm, cost, blockSize, parallelization, salt, derivedKey] = value.replaceAll("\\$", "$").split("$");
   if (algorithm !== "scrypt" || !salt || !derivedKey) return null;
   const N = Number(cost); const r = Number(blockSize); const p = Number(parallelization);
   if (!Number.isInteger(N) || !Number.isInteger(r) || !Number.isInteger(p) || N < 2 || r < 1 || p < 1) return null;
