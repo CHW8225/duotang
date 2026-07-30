@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 import Database from "better-sqlite3";
 
@@ -42,6 +42,15 @@ const recordColumns = [
 
 function databasePath() {
   const configuredPath = process.env.DATABASE_PATH?.trim();
+  if (
+    process.env.NODE_ENV === "production"
+    && (!configuredPath || !isAbsolute(configuredPath))
+  ) {
+    throw new Error(
+      "DATABASE_PATH is required in production and must be an absolute path "
+      + "on a mounted persistent volume.",
+    );
+  }
   const defaultPath = join(
     /* turbopackIgnore: true */ process.cwd(),
     "data",

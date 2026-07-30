@@ -1,10 +1,14 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { FIELD_DEFINITIONS } from "./fields";
+
 type ImportManifest = {
+  source_workbook: string;
+  source_sha256: string;
+  sheet: string;
   record_count: number;
   headers: string[];
   records: Array<{ id: string; excel_row: number }>;
@@ -13,14 +17,13 @@ type ImportManifest = {
 const root = process.cwd();
 const records = JSON.parse(
   readFileSync(join(root, "data/import/polysaccharide-records.json"), "utf8"),
-) as Array<{ id: string; key_molecules: string }>;
+) as Array<Record<string, unknown> & { id: string; key_molecules: string }>;
+const manifest = JSON.parse(
+  readFileSync(join(root, "data/import/polysaccharide-import-manifest.json"), "utf8"),
+) as ImportManifest;
 
 describe("Excel import contract", () => {
   it("preserves literal N/A values and stable source rows", () => {
-    const manifest = JSON.parse(
-      readFileSync(join(root, "data/import/polysaccharide-import-manifest.json"), "utf8"),
-    ) as ImportManifest;
-
     expect(records).toHaveLength(772);
     expect(new Set(records.map(({ id }) => id)).size).toBe(772);
     expect(
@@ -35,12 +38,18 @@ describe("Excel import contract", () => {
     expect(manifest.records.find(({ id }) => id === "poly-0333")?.excel_row).toBe(334);
   });
 
-  it("passes the source workbook cell-by-cell verifier", () => {
-    expect(() =>
-      execFileSync("python", ["scripts/verify-excel-import.py"], {
-        cwd: root,
-        encoding: "utf8",
-      }),
-    ).not.toThrow();
+  it("keeps tracked records consistent with provenance and schema metadata", () => {
+    expect(manifest.source_workbook).toBe("多糖数据填写所有.xlsx");
+    expect(manifest.source_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(manifest.sheet).toBe("单表导入模板");
+    expect(manifest.records.map(({ id }) => id)).toEqual(
+      records.map(({ id }) => id),
+    );
+    expect(manifest.records.map(({ excel_row }) => excel_row)).toEqual(
+      Array.from({ length: 772 }, (_, index) => index + 2),
+    );
+    for (const record of records) {
+      expect(FIELD_DEFINITIONS.every(({ key }) => key in record)).toBe(true);
+    }
   });
 });

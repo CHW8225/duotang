@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createRecord, updateRecord } from "@/lib/db";
+import { createRecord, getRecordById, updateRecord } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import {
   type RecordActionState,
@@ -35,7 +35,13 @@ export async function updateRecordAction(
   formData: FormData,
 ): Promise<RecordActionState> {
   await requireAdmin();
-  const validation = validateRecordFormData(formData);
+  const existingRecord = await getRecordById(id);
+  if (!existingRecord) redirect("/admin/records");
+  const validation = validateRecordFormData(
+    formData,
+    new Date().getFullYear(),
+    existingRecord,
+  );
   if (!validation.success) return validation.state;
   const record = await updateRecord(id, validation.record);
   if (!record) redirect("/admin/records");

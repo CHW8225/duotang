@@ -44,6 +44,7 @@ export function fieldMaxLength(key: keyof PolysaccharideRecord) {
 export function validateRecordFormData(
   formData: FormData,
   currentYear = new Date().getFullYear(),
+  existingRecord?: PolysaccharideRecord,
 ): ValidationResult {
   const values: RecordFormValues = {};
   const normalized = Object.fromEntries(
@@ -82,11 +83,24 @@ export function validateRecordFormData(
   }
 
   const doi = normalized.doi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "");
-  if (normalized.doi && !/^10\.\d{4,9}\/\S+$/i.test(doi)) {
+  const unchangedLegacyDoi =
+    existingRecord !== undefined && normalized.doi === existingRecord.doi;
+  if (
+    normalized.doi
+    && !unchangedLegacyDoi
+    && !/^10\.\d{4,9}\/\S+$/i.test(doi)
+  ) {
     fieldErrors.doi = "请输入有效的 DOI";
   }
 
-  if (normalized.source_url && !validHttpUrl(normalized.source_url)) {
+  const unchangedLegacyUrl =
+    existingRecord !== undefined
+    && normalized.source_url === existingRecord.source_url;
+  if (
+    normalized.source_url
+    && !unchangedLegacyUrl
+    && !validHttpUrl(normalized.source_url)
+  ) {
     fieldErrors.source_url = "请输入有效的 HTTP 或 HTTPS 链接";
   }
 

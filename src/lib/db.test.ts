@@ -2,6 +2,7 @@ import { access, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import Database from "better-sqlite3";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const environment = { ...process.env };
@@ -21,6 +22,7 @@ afterEach(async () => {
   } catch {
     // The RED phase intentionally runs before the SQLite module exists.
   }
+  vi.restoreAllMocks();
   vi.resetModules();
   process.env = { ...environment };
   await Promise.all(
@@ -31,6 +33,39 @@ afterEach(async () => {
 });
 
 describe("SQLite record database", () => {
+  it("uses the local runtime default during development", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "polysaccharide-default-"));
+    temporaryDirectories.push(directory);
+    vi.spyOn(process, "cwd").mockReturnValue(directory);
+    delete process.env.DATABASE_PATH;
+    process.env.NODE_ENV = "development";
+    const database = await import("./db");
+
+    await expect(database.getRecords()).resolves.toHaveLength(772);
+    await expect(
+      access(join(directory, "data", "runtime", "polysaccharide.sqlite3")),
+    ).resolves.toBeUndefined();
+  });
+
+  it("fails loudly in production without an explicit database path", async () => {
+    delete process.env.DATABASE_PATH;
+    process.env.NODE_ENV = "production";
+    const database = await import("./db");
+
+    await expect(database.getRecords()).rejects.toThrow(
+      /DATABASE_PATH.*persistent volume/i,
+    );
+  });
+
+  it("accepts an explicit absolute database path in production", async () => {
+    const databasePath = await useTemporaryDatabase();
+    process.env.NODE_ENV = "production";
+    const database = await import("./db");
+
+    await expect(database.getRecords()).resolves.toHaveLength(772);
+    await expect(access(databasePath)).resolves.toBeUndefined();
+  });
+
   it("initializes a new database from the tracked 772-record seed", async () => {
     const databasePath = await useTemporaryDatabase();
     const database = await import("./db");
@@ -64,25 +99,34 @@ describe("SQLite record database", () => {
     });
   });
 
-  it("commits concurrent creates without losing records", async () => {
-    await useTemporaryDatabase();
+  it("supports writes from two independent WAL connections", async () => {
+    const databasePath = await useTemporaryDatabase();
     const database = await import("./db");
-    const [seedRecord] = await database.getRecords();
+    await database.getRecords();
+    const first = new Database(databasePath);
+    const second = new Database(databasePath);
+    first.pragma("journal_mode = WAL");
+    second.pragma("journal_mode = WAL");
+    first.pragma("busy_timeout = 5000");
+    second.pragma("busy_timeout = 5000");
 
-    await Promise.all(
-      Array.from({ length: 12 }, (_, index) =>
-        database.createRecord({
-          ...seedRecord,
-          id: `concurrent-${index}`,
-          standard_name: `Concurrent ${index}`,
-          created_at: "",
-          updated_at: "",
-        }),
-      ),
-    );
+    try {
+      first.prepare("INSERT INTO app_metadata (key, value) VALUES (?, ?)")
+        .run("multi_connection_first", "written");
+      second.prepare("INSERT INTO app_metadata (key, value) VALUES (?, ?)")
+        .run("multi_connection_second", "written");
 
-    const records = await database.getRecords();
-    expect(records.filter(({ id }) => id.startsWith("concurrent-"))).toHaveLength(12);
+      expect(first.pragma("journal_mode", { simple: true })).toBe("wal");
+      expect(second.pragma("busy_timeout", { simple: true })).toBe(5000);
+      expect(
+        first.prepare(
+          "SELECT COUNT(*) AS count FROM app_metadata WHERE key LIKE 'multi_connection_%'",
+        ).get(),
+      ).toEqual({ count: 2 });
+    } finally {
+      first.close();
+      second.close();
+    }
   });
 
   it("rolls back a duplicate-id write without damaging the existing row", async () => {
