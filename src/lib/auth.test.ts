@@ -53,6 +53,13 @@ describe("admin authentication", () => {
     await expect(verifyAdminPassword("administrator", "correct-password")).resolves.toBe(true);
   });
 
+  it("rejects a valid scrypt hash with mixed separator escaping", async () => {
+    configureAdmin();
+    process.env.ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH?.replace("$", "\\$");
+
+    await expect(verifyAdminPassword("administrator", "correct-password")).resolves.toBe(false);
+  });
+
   it("rejects malformed password hashes", async () => {
     process.env.ADMIN_USERNAME = "administrator";
     process.env.ADMIN_PASSWORD_HASH = "not-a-password-hash";
