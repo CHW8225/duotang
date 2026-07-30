@@ -3,16 +3,23 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createStoredAdminSession, getStoredAdminSession, isAdminConfigured, verifyAdminPassword } from "./auth";
 
 const environment = { ...process.env };
-const runtimeDirectories: string[] = [];
+const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
+  try {
+    const { closeDatabaseConnection } = await import("./sqlite");
+    closeDatabaseConnection();
+  } catch {
+    // The RED phase intentionally runs before the SQLite module exists.
+  }
   process.env = { ...environment };
-  await Promise.all(runtimeDirectories.splice(0).map((directory) => rm(directory, { force: true, recursive: true })));
+  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { force: true, recursive: true })));
 });
 
 function configureAdmin(password = "correct-password") {
@@ -23,10 +30,11 @@ function configureAdmin(password = "correct-password") {
   process.env.SESSION_SECRET = "test-session-secret";
 }
 
-async function useTemporaryRuntimeDirectory() {
+async function useTemporaryDatabase() {
   const directory = await mkdtemp(join(tmpdir(), "polysaccharide-session-"));
-  runtimeDirectories.push(directory);
-  process.env.RUNTIME_DATA_DIR = directory;
+  temporaryDirectories.push(directory);
+  process.env.DATABASE_PATH = join(directory, "polysaccharide.sqlite3");
+  return process.env.DATABASE_PATH;
 }
 
 describe("admin authentication", () => {
@@ -70,7 +78,7 @@ describe("admin authentication", () => {
 
   it("stores sessions server-side and resolves them from an opaque id", async () => {
     configureAdmin();
-    await useTemporaryRuntimeDirectory();
+    await useTemporaryDatabase();
 
     const session = await createStoredAdminSession("administrator");
 
@@ -79,5 +87,42 @@ describe("admin authentication", () => {
       username: "administrator",
       authenticatedAt: expect.any(String),
     });
+  });
+
+  it("keeps sessions after a database reconnect", async () => {
+    configureAdmin();
+    await useTemporaryDatabase();
+    const session = await createStoredAdminSession("administrator");
+    const { closeDatabaseConnection } = await import("./sqlite");
+    closeDatabaseConnection();
+
+    const reloadedAuth = await import("./auth");
+
+    await expect(reloadedAuth.getStoredAdminSession(session?.id ?? "")).resolves.toMatchObject({
+      username: "administrator",
+    });
+  });
+
+  it("deletes expired sessions during lookup", async () => {
+    configureAdmin();
+    const databasePath = await useTemporaryDatabase();
+    await createStoredAdminSession("administrator");
+    const database = new Database(databasePath);
+    database.prepare(
+      `INSERT INTO admin_sessions (id, username, authenticated_at, expires_at)
+       VALUES (?, ?, ?, ?)`,
+    ).run(
+      "expired-session",
+      "administrator",
+      "2020-01-01T00:00:00.000Z",
+      "2020-01-01T01:00:00.000Z",
+    );
+
+    await expect(getStoredAdminSession("expired-session")).resolves.toBeNull();
+    expect(
+      database.prepare("SELECT COUNT(*) AS count FROM admin_sessions WHERE id = ?")
+        .get("expired-session"),
+    ).toEqual({ count: 0 });
+    database.close();
   });
 });

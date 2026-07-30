@@ -3,14 +3,13 @@ import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { readRuntimeJson, updateRuntimeJson } from "./runtime-store";
+import { insertAdminSession, selectAdminSession } from "./sqlite";
 
 export type AdminSession = { username: string; authenticatedAt: string };
 export type StoredAdminSession = AdminSession & { id: string; expiresAt: string };
 
 const SESSION_COOKIE = "polysaccharide_admin_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
-const SESSION_STORE_FILE = "admin-sessions.json";
 
 export function isAdminConfigured() {
   return Boolean(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD_HASH && process.env.SESSION_SECRET);
@@ -38,10 +37,6 @@ export async function verifyAdminPassword(username: string, password: string) {
   } catch { return false; }
 }
 
-function currentSessions(sessions: StoredAdminSession[]) {
-  return sessions.filter((session) => new Date(session.expiresAt).getTime() > Date.now());
-}
-
 export async function createStoredAdminSession(username: string): Promise<StoredAdminSession | null> {
   if (!isAdminConfigured() || username !== process.env.ADMIN_USERNAME) return null;
   const authenticatedAt = new Date();
@@ -51,16 +46,13 @@ export async function createStoredAdminSession(username: string): Promise<Stored
     authenticatedAt: authenticatedAt.toISOString(),
     expiresAt: new Date(authenticatedAt.getTime() + SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
   };
-  return updateRuntimeJson(SESSION_STORE_FILE, () => [] as StoredAdminSession[], (sessions) => ({
-    data: [...currentSessions(sessions), session],
-    result: session,
-  }));
+  insertAdminSession(session);
+  return session;
 }
 
 export async function getStoredAdminSession(id: string): Promise<StoredAdminSession | null> {
   if (!id || !isAdminConfigured()) return null;
-  const sessions = await readRuntimeJson(SESSION_STORE_FILE, () => [] as StoredAdminSession[]);
-  const session = currentSessions(sessions).find((candidate) => candidate.id === id) ?? null;
+  const session = selectAdminSession(id);
   return session?.username === process.env.ADMIN_USERNAME ? session : null;
 }
 
