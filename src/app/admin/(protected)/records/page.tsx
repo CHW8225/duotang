@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { requireAdmin } from "@/lib/auth";
 import { getRecords } from "@/lib/db";
 import { type RecordFilters, filterRecords } from "@/lib/search";
 type SearchParams = Record<string, string | string[] | undefined>;
 const readParam = (params: SearchParams, name: string) => { const value = params[name]; return Array.isArray(value) ? value[0] ?? "" : value ?? ""; };
 export default async function AdminRecordsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  await requireAdmin();
   const params = await searchParams;
   const filters: RecordFilters = { keyword: readParam(params, "keyword"), sourceCategory: readParam(params, "sourceCategory"), activityCategory: readParam(params, "activityCategory"), evidenceLevel: readParam(params, "evidenceLevel"), structureCompleteness: readParam(params, "structureCompleteness"), reviewStatus: readParam(params, "reviewStatus"), yearFrom: Number(readParam(params, "yearFrom")) || undefined, yearTo: Number(readParam(params, "yearTo")) || undefined };
   const filteredRecords = filterRecords(await getRecords(), filters);

@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { requireAdmin } from "@/lib/auth";
 import { getRecords } from "@/lib/db";
 
 export default async function AdminDashboardPage() {
+  await requireAdmin();
   const records = await getRecords();
   const pendingReviewCount = records.filter((record) => record.review_status === "待审核").length;
   const flaggedCount = records.filter((record) => record.data_quality_flags.length > 0).length;
