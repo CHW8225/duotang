@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import importedRecords from "../../data/import/polysaccharide-records.json";
 import type { PolysaccharideRecord } from "./fields";
-import { filterRecords } from "./search";
+import { activityFacetValues, filterRecords } from "./search";
 
 const record = (overrides: Partial<PolysaccharideRecord>): PolysaccharideRecord => ({
   id: "poly-1",
@@ -99,6 +100,23 @@ describe("filterRecords", () => {
     expect(
       filterRecords(compoundRecords, { activityCategory: "抗氧化" }).map(({ id }) => id),
     ).toEqual(["compound", "exact"]);
+  });
+
+  it("builds activity filter options from normalized facets", () => {
+    const options = activityFacetValues([
+      record({ activity_category: "抗氧化、抗炎活性" }),
+      record({ activity_category: "抗氧化" }),
+    ]);
+
+    expect(options).toEqual(["抗炎", "抗氧化"]);
+  });
+
+  it("matches all 331 real records containing the antioxidant facet", () => {
+    expect(
+      filterRecords(importedRecords as PolysaccharideRecord[], {
+        activityCategory: "抗氧化",
+      }),
+    ).toHaveLength(331);
   });
 
   it("filters by evidence level", () => {

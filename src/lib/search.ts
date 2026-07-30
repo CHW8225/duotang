@@ -35,6 +35,12 @@ const activityFacets = (value: string) =>
     .map((facet) => facet.trim().replace(/活性$/, ""))
     .filter(Boolean);
 
+export function activityFacetValues(records: PolysaccharideRecord[]) {
+  return [
+    ...new Set(records.flatMap((record) => activityFacets(record.activity_category))),
+  ].sort((left, right) => left.localeCompare(right));
+}
+
 export function filterRecords(records: PolysaccharideRecord[], filters: RecordFilters) {
   const keyword = filters.keyword?.trim().toLowerCase();
   const activityCategory = filters.activityCategory?.trim().replace(/活性$/, "");

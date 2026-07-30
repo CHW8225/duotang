@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import type { PolysaccharideRecord } from "@/lib/fields";
-import { filterRecords } from "@/lib/search";
+import { activityFacetValues, filterRecords } from "@/lib/search";
 import { RecordTable } from "./RecordTable";
 
 type OptionField = "source_category" | "activity_category" | "evidence_level" | "structure_completeness" | "review_status";
@@ -17,7 +17,9 @@ const filterFields: Array<[OptionField, string]> = [
 ];
 
 const uniqueValues = (records: PolysaccharideRecord[], field: OptionField) =>
-  [...new Set(records.map((record) => record[field]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  field === "activity_category"
+    ? activityFacetValues(records)
+    : [...new Set(records.map((record) => record[field]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
 export function RecordFilters({ records }: { records: PolysaccharideRecord[] }) {
   const [keyword, setKeyword] = useState("");
