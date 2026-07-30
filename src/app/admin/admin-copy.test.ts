@@ -32,15 +32,21 @@ describe("管理后台中文化", () => {
       .map(readSource)
       .join("\n");
 
-    for (const phrase of [
-      "Dashboard",
-      "New record",
-      "Manage records",
-      "Filter records",
-      "Save changes",
-      "Not recorded",
-    ]) {
+    for (const phrase of ["New record", "Manage records", "Filter records", "Save changes", "Not recorded"]) {
       expect(source).not.toContain(phrase);
     }
+  });
+
+  it("动态字段标签使用中文且不改动底层键名", async () => {
+    const { FIELD_DEFINITIONS } = await import("../../lib/fields");
+
+    expect(FIELD_DEFINITIONS.find(({ key }) => key === "upload_id")?.label).toBe("上传编号");
+    expect(FIELD_DEFINITIONS.find(({ key }) => key === "ref_id")?.label).toBe("文献编号");
+  });
+
+  it("内部页面名称不受可见文案检查误伤", () => {
+    expect(readSource("src/app/admin/(protected)/page.tsx")).toContain(
+      "function AdminDashboardPage",
+    );
   });
 });

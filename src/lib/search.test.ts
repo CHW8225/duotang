@@ -89,6 +89,18 @@ describe("filterRecords", () => {
     ]);
   });
 
+  it("matches an exact activity facet inside a compound category", () => {
+    const compoundRecords = [
+      record({ id: "compound", activity_category: "抗氧化、抗炎" }),
+      record({ id: "exact", activity_category: "抗氧化" }),
+      record({ id: "similar", activity_category: "抗氧化能力评价" }),
+    ];
+
+    expect(
+      filterRecords(compoundRecords, { activityCategory: "抗氧化" }).map(({ id }) => id),
+    ).toEqual(["compound", "exact"]);
+  });
+
   it("filters by evidence level", () => {
     expect(filterRecords(records, { evidenceLevel: "Animal" }).map(({ id }) => id)).toEqual(["mushroom"]);
   });

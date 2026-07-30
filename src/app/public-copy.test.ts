@@ -46,4 +46,11 @@ describe("公开界面中文化", () => {
     expect(source).toContain('["structure_completeness", "结构完整度"]');
     expect(source).toContain('["review_status", "审核状态"]');
   });
+
+  it("无效地址显示中文空状态", () => {
+    const source = readSource("src/app/not-found.tsx");
+
+    expect(source).toContain("页面未找到");
+    expect(source).toContain("返回多糖数据库");
+  });
 });

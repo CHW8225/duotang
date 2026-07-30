@@ -66,11 +66,11 @@ export type FieldDefinition = {
 };
 
 export const FIELD_DEFINITIONS: FieldDefinition[] = [
-  { key: "upload_id", label: "Upload_ID", group: "identity", editable: true },
+  { key: "upload_id", label: "上传编号", group: "identity", editable: true },
   { key: "standard_name", label: "标准名称", group: "identity", editable: true },
   { key: "english_name", label: "英文名称", group: "identity", editable: true },
   { key: "aliases", label: "别名", group: "identity", editable: true },
-  { key: "ref_id", label: "Ref_ID", group: "identity", editable: true },
+  { key: "ref_id", label: "文献编号", group: "identity", editable: true },
   { key: "literature_title", label: "文献标题", group: "literature", editable: true, multiline: true },
   { key: "journal", label: "期刊", group: "literature", editable: true },
   { key: "publication_year", label: "发表年份", group: "literature", editable: true },

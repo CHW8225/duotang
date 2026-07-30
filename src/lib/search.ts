@@ -29,12 +29,19 @@ const searchableText = (record: PolysaccharideRecord) =>
     .join(" ")
     .toLowerCase();
 
+const activityFacets = (value: string) =>
+  value
+    .split(/[;,；，、/|+\n]+/)
+    .map((facet) => facet.trim().replace(/活性$/, ""))
+    .filter(Boolean);
+
 export function filterRecords(records: PolysaccharideRecord[], filters: RecordFilters) {
   const keyword = filters.keyword?.trim().toLowerCase();
+  const activityCategory = filters.activityCategory?.trim().replace(/活性$/, "");
   const filtered = records.filter((record) => {
     if (keyword && !searchableText(record).includes(keyword)) return false;
     if (filters.sourceCategory && record.source_category !== filters.sourceCategory) return false;
-    if (filters.activityCategory && record.activity_category !== filters.activityCategory) return false;
+    if (activityCategory && !activityFacets(record.activity_category).includes(activityCategory)) return false;
     if (filters.evidenceLevel && record.evidence_level !== filters.evidenceLevel) return false;
     if (filters.structureCompleteness && record.structure_completeness !== filters.structureCompleteness) {
       return false;
