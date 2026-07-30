@@ -2,15 +2,15 @@ import type { FieldDefinition, FieldGroup, PolysaccharideRecord } from "@/lib/fi
 import { FIELD_DEFINITIONS } from "@/lib/fields";
 
 const groups: Array<[FieldGroup, string]> = [
-  ["identity", "Identity"], ["literature", "Literature"], ["source", "Source and Preparation"],
-  ["structure", "Structure"], ["bioactivity", "Bioactivity"], ["management", "Data Management"],
+  ["identity", "基本信息"], ["literature", "文献信息"], ["source", "来源与制备"],
+  ["structure", "结构信息"], ["bioactivity", "生物活性"], ["management", "数据管理"],
 ];
 
 function fieldValue(record: PolysaccharideRecord, field: FieldDefinition) {
   const value = record[field.key];
-  if (!value) return "Not recorded";
+  if (!value) return "未记录";
   if (field.key === "doi") return <a className="text-link" href={`https://doi.org/${value}`} rel="noreferrer" target="_blank">{value}</a>;
-  if (field.key === "source_url") return <a className="text-link" href={String(value).startsWith("http") ? String(value) : `https://${value}`} rel="noreferrer" target="_blank">Open source</a>;
+  if (field.key === "source_url") return <a className="text-link" href={String(value).startsWith("http") ? String(value) : `https://${value}`} rel="noreferrer" target="_blank">查看来源</a>;
   return String(value);
 }
 

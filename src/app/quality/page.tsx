@@ -14,26 +14,25 @@ export default async function QualityPage() {
 
   return (
     <main className="page-shell">
-      <p className="eyebrow">Curation overview</p>
-      <h1>Quality Dashboard</h1>
+      <p className="eyebrow">数据治理概览</p>
+      <h1>数据质量</h1>
       <p className="page-intro">
-        Flags are retained from the imported record set and identify records that need scientific
-        curation attention.
+        质量标记来自导入记录，用于定位需要进一步科研核验和补充的数据。
       </p>
       <section className="quality-summary">
-        <div><span>Records with flags</span><strong>{affected.length}</strong></div>
-        <div><span>Future-year records</span><strong>{futureRecords.length}</strong></div>
+        <div><span>有质量标记的记录</span><strong>{affected.length}</strong></div>
+        <div><span>未来年份记录</span><strong>{futureRecords.length}</strong></div>
       </section>
       <section className="quality-section">
-        <h2>Issue counts</h2>
+        <h2>问题统计</h2>
         <div className="issue-list">
           {Object.entries(flagCounts).sort(([, left], [, right]) => right - left).map(([flag, count]) => (
             <div key={flag}><span>{QUALITY_FLAG_LABELS[flag as QualityFlag] ?? flag}</span><strong>{count}</strong></div>
           ))}
         </div>
       </section>
-      <section className="quality-section"><h2>Affected records</h2><RecordLinks records={affected} /></section>
-      <section className="quality-section"><h2>Future-year records</h2><p className="section-note">Includes entries dated 2027.</p><RecordLinks records={futureRecords} /></section>
+      <section className="quality-section"><h2>受影响记录</h2><RecordLinks records={affected} /></section>
+      <section className="quality-section"><h2>未来年份记录</h2><p className="section-note">包含 2027 年的记录。</p><RecordLinks records={futureRecords} /></section>
     </main>
   );
 }
@@ -45,9 +44,9 @@ function RecordLinks({ records }: { records: Awaited<ReturnType<typeof getRecord
         <li key={record.id}>
           <div>
             <strong>{record.standard_name || record.english_name || record.id}</strong>
-            <span>{record.publication_year ?? "No year"} | {record.data_quality_flags.length} flags</span>
+            <span>{record.publication_year ?? "未记录"} | {record.data_quality_flags.length} 项问题</span>
           </div>
-          <Link className="text-link" href={`/records/${record.id}`}>View record</Link>
+          <Link className="text-link" href={`/records/${record.id}`}>查看记录</Link>
         </li>
       ))}
     </ul>

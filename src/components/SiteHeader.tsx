@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const links = [
-  ["Database", "/database"],
-  ["Data dictionary", "/dictionary"],
-  ["Quality", "/quality"],
+  ["数据检索", "/database"],
+  ["数据字典", "/dictionary"],
+  ["数据质量", "/quality"],
 ];
 
 export function SiteHeader() {
@@ -11,10 +11,10 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="site-header__inner">
         <Link className="site-brand" href="/">
-          <span className="site-brand__mark">PRD</span>
-          <span>Polysaccharide Research Database</span>
+          <span className="site-brand__mark">多糖</span>
+          <span>多糖科研数据库</span>
         </Link>
-        <nav aria-label="Primary navigation" className="site-nav">
+        <nav aria-label="主导航" className="site-nav">
           {links.map(([label, href]) => (
             <Link href={href} key={href}>
               {label}
