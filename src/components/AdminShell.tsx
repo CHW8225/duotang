@@ -1,5 +1,5 @@
 import Link from "next/link";
 
 export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <main className="page-shell admin-shell"><nav aria-label="Admin navigation" className="admin-nav"><Link href="/admin">Dashboard</Link><Link href="/admin/records">Records</Link><Link href="/admin/records/new">New record</Link></nav>{children}</main>;
+  return <main className="page-shell admin-shell"><nav aria-label="后台导航" className="admin-nav"><Link href="/admin">管理概览</Link><Link href="/admin/records">记录管理</Link><Link href="/admin/records/new">新建记录</Link></nav>{children}</main>;
 }

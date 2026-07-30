@@ -2,7 +2,7 @@ import type { FormHTMLAttributes } from "react";
 import { FIELD_DEFINITIONS, type FieldGroup, type PolysaccharideRecord, type ReviewStatus } from "@/lib/fields";
 
 type Props = { action: NonNullable<FormHTMLAttributes<HTMLFormElement>["action"]>; record?: PolysaccharideRecord; submitLabel: string };
-const groupLabels: Record<FieldGroup, string> = { identity: "Identity", literature: "Literature", source: "Source and preparation", structure: "Structure", bioactivity: "Bioactivity", management: "Data management" };
+const groupLabels: Record<FieldGroup, string> = { identity: "基本信息", literature: "文献信息", source: "来源与制备", structure: "结构信息", bioactivity: "生物活性", management: "数据管理" };
 const reviewStatuses: ReviewStatus[] = ["待审核", "已审核", "需修改", "未标注"];
 
 export function AdminRecordForm({ action, record, submitLabel }: Props) {
