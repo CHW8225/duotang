@@ -1,0 +1,25 @@
+[Unit]
+Description=Polysaccharide Research Database
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=polysaccharide
+Group=polysaccharide
+WorkingDirectory=/srv/polysaccharide/current
+Environment=NODE_ENV=production
+Environment=PORT=3100
+EnvironmentFile=/etc/polysaccharide/app.env
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/polysaccharide/shared
+
+[Install]
+WantedBy=multi-user.target

@@ -6,10 +6,10 @@ COS Bucket 必须保持私有。CVM 使用最小权限子账号，通过环境�
 
 ## 补偿清理
 
-数据库写入失败且即时删除 COS 对象也失败时，对象键写入 `cos_cleanup_jobs`。使用仅 CVM 可读的 `CRON_SECRET` 定时调用：
+数据库写入失败且即时删除 COS 对象也失败时，对象键写入 `cos_cleanup_jobs`。使用 root 所有、权限 `600` 的 `/etc/polysaccharide/cleanup-cos.curl` 保存 URL、POST 方法和 Authorization header，密钥不得出现在 crontab 或进程 argv。安全创建方式见部署文档：
 
 ```cron
-*/10 * * * * . /etc/polysaccharide/cron.env && curl --fail --silent --request POST --header "Authorization: Bearer ${CRON_SECRET}" https://数据库域名/api/internal/cleanup-cos
+*/10 * * * * root curl --config /etc/polysaccharide/cleanup-cos.curl
 ```
 
 连续失败会累计次数、保存最后错误并设置告警字段；每次成功或失败都会写入审计日志。运维监控必须对 `alert_required=true` 建立告警。

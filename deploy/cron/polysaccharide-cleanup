@@ -1,0 +1,5 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+17 3 * * * root curl --config /etc/polysaccharide/cleanup-imports.curl
+*/10 * * * * root curl --config /etc/polysaccharide/cleanup-cos.curl

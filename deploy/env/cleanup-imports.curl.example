@@ -1,0 +1,6 @@
+url = "https://database.example.cn/api/internal/cleanup-imports"
+request = "POST"
+header = "Authorization: Bearer replace_with_cron_secret"
+fail
+silent
+show-error
