@@ -122,6 +122,25 @@ function createSchema(database: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at
       ON admin_sessions (expires_at);
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY, email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      password_hash TEXT NOT NULL, email_verified_at TEXT,
+      status TEXT NOT NULL CHECK (status IN ('pending', 'active', 'disabled')),
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL, expires_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS email_tokens (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE, purpose TEXT NOT NULL,
+      expires_at TEXT NOT NULL, used_at TEXT, created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS auth_rate_limits (
+      key TEXT PRIMARY KEY, attempt_count INTEGER NOT NULL,
+      reset_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
   `);
   const existingColumns = new Set(
     (database.prepare("PRAGMA table_info(polysaccharide_records)").all() as { name: string }[])

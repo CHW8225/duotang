@@ -1,0 +1,2 @@
+import { AuthPage } from "@/components/AuthPage"; import { requireUser } from "@/lib/auth-runtime"; import { logoutAction } from "../auth-actions";
+export default async function AccountPage(){const user=await requireUser();return <AuthPage title="个人中心" description="您的科研数据库账号信息"><dl className="account-details"><dt>邮箱</dt><dd>{user.email}</dd><dt>邮箱状态</dt><dd>已验证</dd></dl><form action={logoutAction}><button type="submit">退出登录</button></form></AuthPage>}

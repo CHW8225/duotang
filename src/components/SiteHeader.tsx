@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth-runtime";
 
 const links = [
   ["数据检索", "/database"],
   ["数据质量", "/quality"],
 ];
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const user = await getCurrentUser();
   return (
     <header className="site-header">
       <div className="site-header__inner">
@@ -20,6 +22,7 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
+        <div className="site-account"><Link href={user ? "/account" : "/login"}>{user ? "个人中心" : "登录"}</Link></div>
       </div>
     </header>
   );

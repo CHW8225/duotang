@@ -1,0 +1,2 @@
+import { AuthMessage,AuthPage } from "@/components/AuthPage"; import { forgotPasswordAction } from "../auth-actions";
+export default async function ForgotPage({searchParams}:{searchParams:Promise<{error?:string}>}){const q=await searchParams;return <AuthPage title="找回密码" description="输入注册邮箱，我们会发送一小时内有效的重置链接。"><AuthMessage error={q.error}/><form action={forgotPasswordAction} className="auth-form"><label>邮箱<input name="email" type="email" required/></label><button type="submit">发送重置邮件</button></form></AuthPage>}

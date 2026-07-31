@@ -16,6 +16,20 @@
   font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
 }
 
+.auth-page { min-height: calc(100vh - 80px); display: grid; place-items: center; padding: 48px 20px; background: #f3f8f7; }
+.auth-panel { width: min(100%, 460px); padding: 32px; border: 1px solid #b8d3cf; background: #fff; box-shadow: 0 18px 48px rgba(13, 74, 70, .1); }
+.auth-panel h1 { margin: 16px 0 8px; font-size: 28px; }
+.auth-back,.auth-footer a,.auth-resend summary { color: #006c67; }
+.auth-form { display: grid; gap: 16px; margin-top: 24px; }
+.auth-form label { display: grid; gap: 7px; font-weight: 700; }
+.auth-form input { min-height: 44px; border: 1px solid #91b8b4; padding: 8px 10px; font: inherit; }
+.auth-form button,.auth-panel button,.button-link { min-height: 42px; border: 1px solid #006c67; background: #006c67; color: #fff; padding: 10px 18px; font-weight: 700; text-decoration: none; cursor: pointer; }
+.auth-message { padding: 10px 12px; border-left: 3px solid #1976a3; background: #edf7fb; }
+.auth-message--error { border-color: #b43c35; background: #fff1ef; }
+.auth-footer,.auth-resend { margin-top: 24px; }
+.account-details { display: grid; grid-template-columns: 100px 1fr; gap: 12px; margin: 28px 0; }
+.account-details dt { color: #526967; }.account-details dd { margin: 0; font-weight: 700; }
+
 * {
   box-sizing: border-box;
 }
