@@ -5,6 +5,8 @@ import Database from "better-sqlite3";
 
 import importedRecords from "../../data/import/polysaccharide-records.json";
 import { FIELD_DEFINITIONS, type PolysaccharideRecord } from "./fields";
+import { RecordLifecycleError, validateDeletionReason } from "./record-lifecycle";
+import { randomUUID } from "node:crypto";
 
 type DatabaseState = {
   path: string;
@@ -81,6 +83,9 @@ function rowToRecord(row: Record<string, unknown>): PolysaccharideRecord {
     data_quality_flags: JSON.parse(String(row.data_quality_flags)) as string[],
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
+    deleted_at: row.deleted_at ? String(row.deleted_at) : null,
+    deleted_by: row.deleted_by ? String(row.deleted_by) : null,
+    deletion_reason: row.deletion_reason ? String(row.deletion_reason) : null,
   } as PolysaccharideRecord;
 }
 
@@ -151,6 +156,18 @@ function createSchema(database: Database.Database) {
       name TEXT NOT NULL, query_params TEXT NOT NULL, created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL, UNIQUE(user_id, name)
     );
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      actor_type TEXT NOT NULL CHECK (actor_type IN ('admin', 'system')),
+      actor_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      changed_fields TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_entity
+      ON audit_logs (entity_type, entity_id, created_at DESC);
   `);
   const existingColumns = new Set(
     (database.prepare("PRAGMA table_info(polysaccharide_records)").all() as { name: string }[])
@@ -161,6 +178,8 @@ function createSchema(database: Database.Database) {
       database.exec(`ALTER TABLE polysaccharide_records ADD COLUMN "${column}" TEXT`);
     }
   }
+  database.exec(`CREATE INDEX IF NOT EXISTS idx_records_deleted_at
+    ON polysaccharide_records (deleted_at, sort_order DESC)`);
 }
 
 function initialize(database: Database.Database) {
@@ -255,6 +274,34 @@ export function insertRecord(record: PolysaccharideRecord) {
   return insert.immediate();
 }
 
+export type AuditAction = "create" | "update" | "soft_delete" | "restore";
+
+function insertAuditLog(
+  database: Database.Database,
+  actorId: string,
+  action: AuditAction,
+  entityId: string,
+  changedFields: Record<string, unknown>,
+) {
+  database.prepare(`
+    INSERT INTO audit_logs
+      (id, actor_type, actor_id, action, entity_type, entity_id, changed_fields, created_at)
+    VALUES (?, 'admin', ?, ?, 'polysaccharide_record', ?, ?, ?)
+  `).run(randomUUID(), actorId, action, entityId, JSON.stringify(changedFields), new Date().toISOString());
+}
+
+export function insertRecordWithAudit(record: PolysaccharideRecord, actorId: string) {
+  const database = getDatabase();
+  const transaction = database.transaction(() => {
+    const created = insertRecord(record);
+    insertAuditLog(database, actorId, "create", record.id, {
+      fields: Object.fromEntries(recordFieldKeys.map((key) => [key, true])),
+    });
+    return created;
+  });
+  return transaction.immediate();
+}
+
 export function replaceRecord(record: PolysaccharideRecord) {
   const assignments = recordColumns
     .filter((column) => column !== "id" && column !== "created_at")
@@ -273,14 +320,96 @@ export function replaceRecord(record: PolysaccharideRecord) {
   return result.changes === 1 ? record : null;
 }
 
-export function softDeleteRecord(id:string,deletedBy:string,reason:string){
-  const database=getDatabase();
-  const transaction=database.transaction(()=>database.prepare(`
-    UPDATE polysaccharide_records
-    SET deleted_at = ?, deleted_by = ?, deletion_reason = ?
-    WHERE id = ? AND deleted_at IS NULL
-  `).run(new Date().toISOString(),deletedBy,reason,id).changes===1);
+export function updateRecordWithAudit(
+  record: PolysaccharideRecord,
+  actorId: string,
+  changedFields: Record<string, unknown>,
+) {
+  const database = getDatabase();
+  const transaction = database.transaction(() => {
+    const updated = replaceRecord(record);
+    if (!updated) return null;
+    insertAuditLog(database, actorId, "update", record.id, changedFields);
+    return updated;
+  });
   return transaction.immediate();
+}
+
+export function softDeleteRecord(
+  id: string,
+  deletedBy: string,
+  reason: string,
+  expectedName: string,
+) {
+  const normalizedReason = validateDeletionReason(reason);
+  const database = getDatabase();
+  const transaction = database.transaction(() => {
+    const row = database.prepare(
+      "SELECT * FROM polysaccharide_records WHERE id = ? AND deleted_at IS NULL",
+    ).get(id) as Record<string, unknown> | undefined;
+    if (!row) throw new RecordLifecycleError("NOT_ACTIVE", "记录不存在或已被删除");
+    if (String(row.standard_name) !== expectedName) {
+      throw new RecordLifecycleError("NAME_MISMATCH", "确认名称与记录标准名称不一致");
+    }
+    const deletedAt = new Date().toISOString();
+    database.prepare(`
+      UPDATE polysaccharide_records
+      SET deleted_at = ?, deleted_by = ?, deletion_reason = ?
+      WHERE id = ? AND deleted_at IS NULL
+    `).run(deletedAt, deletedBy, normalizedReason, id);
+    insertAuditLog(database, deletedBy, "soft_delete", id, {
+      deleted_at: deletedAt,
+      deletion_reason: normalizedReason,
+    });
+    return rowToRecord(row);
+  });
+  return transaction.immediate();
+}
+
+export function restoreSqliteRecord(id: string, actorId: string) {
+  const database = getDatabase();
+  const transaction = database.transaction(() => {
+    const row = database.prepare(
+      "SELECT * FROM polysaccharide_records WHERE id = ? AND deleted_at IS NOT NULL",
+    ).get(id) as Record<string, unknown> | undefined;
+    if (!row) throw new RecordLifecycleError("NOT_DELETED", "记录不存在或不在回收站");
+    database.prepare(`
+      UPDATE polysaccharide_records
+      SET deleted_at = NULL, deleted_by = NULL, deletion_reason = NULL, updated_at = ?
+      WHERE id = ? AND deleted_at IS NOT NULL
+    `).run(new Date().toISOString(), id);
+    insertAuditLog(database, actorId, "restore", id, { restored: true });
+    return rowToRecord(row);
+  });
+  return transaction.immediate();
+}
+
+export type AuditLog = {
+  id: string;
+  actor_type: "admin" | "system";
+  actor_id: string;
+  action: AuditAction;
+  entity_type: string;
+  entity_id: string;
+  changed_fields: Record<string, unknown>;
+  created_at: string;
+};
+
+export function selectAuditLogs(entityId?: string): AuditLog[] {
+  const rows = getDatabase().prepare(`
+    SELECT * FROM audit_logs${entityId ? " WHERE entity_id = ?" : ""}
+    ORDER BY created_at DESC, rowid DESC
+  `).all(...(entityId ? [entityId] : [])) as Array<Record<string, unknown>>;
+  return rows.map((row) => ({
+    id: String(row.id),
+    actor_type: String(row.actor_type) as AuditLog["actor_type"],
+    actor_id: String(row.actor_id),
+    action: String(row.action) as AuditAction,
+    entity_type: String(row.entity_type),
+    entity_id: String(row.entity_id),
+    changed_fields: JSON.parse(String(row.changed_fields)) as Record<string, unknown>,
+    created_at: String(row.created_at),
+  }));
 }
 
 export function insertAdminSession(session: StoredSessionData) {

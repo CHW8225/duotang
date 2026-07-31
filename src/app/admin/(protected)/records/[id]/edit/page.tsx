@@ -3,4 +3,6 @@ import { AdminRecordForm } from "@/components/AdminRecordForm";
 import { requireAdmin } from "@/lib/auth";
 import { getRecordById } from "@/lib/db";
 import { updateRecordAction } from "../../actions";
-export default async function EditAdminRecordPage({ params }: { params: Promise<{ id: string }> }) { await requireAdmin(); const { id } = await params; const record = await getRecordById(id); if (!record) notFound(); return <><p className="eyebrow">记录管理</p><h1>编辑记录</h1><AdminRecordForm action={updateRecordAction.bind(null, record.id)} record={record} submitLabel="保存修改" /></>; }
+import { softDeleteRecordAction } from "../../actions";
+import { AdminDeleteRecordPanel } from "@/components/AdminDeleteRecordPanel";
+export default async function EditAdminRecordPage({ params }: { params: Promise<{ id: string }> }) { await requireAdmin(); const { id } = await params; const record = await getRecordById(id); if (!record) notFound(); return <><p className="eyebrow">记录管理</p><h1>编辑记录</h1><AdminRecordForm action={updateRecordAction.bind(null, record.id)} record={record} submitLabel="保存修改" /><AdminDeleteRecordPanel action={softDeleteRecordAction.bind(null, record.id)} standardName={record.standard_name} /></>; }

@@ -1,8 +1,10 @@
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
+import { randomUUID } from "node:crypto";
 
 import { FIELD_DEFINITIONS, type PolysaccharideRecord } from "./fields";
 import { buildPostgresPoolConfig } from "./postgres-config";
 import type { StoredSessionData } from "./sqlite";
+import { RecordLifecycleError, validateDeletionReason } from "./record-lifecycle";
 
 type QueryOptions = { includeDeleted?: boolean };
 type PostgresGlobal = typeof globalThis & { polysaccharidePool?: Pool };
@@ -62,6 +64,11 @@ export function mapPostgresRowToRecord(row: QueryResultRow): PolysaccharideRecor
   const qualityFlags = Array.isArray(row.data_quality_flags)
     ? row.data_quality_flags
     : JSON.parse(String(row.data_quality_flags ?? "[]"));
+  const deletionMetadata = Object.hasOwn(row, "deleted_at") ? {
+    deleted_at: row.deleted_at ? new Date(row.deleted_at).toISOString() : null,
+    deleted_by: row.deleted_by ? String(row.deleted_by) : null,
+    deletion_reason: row.deletion_reason ? String(row.deletion_reason) : null,
+  } : {};
   return {
     ...Object.fromEntries(scientificColumns.map((key) => [key, row[key]])),
     id: String(row.id),
@@ -69,6 +76,7 @@ export function mapPostgresRowToRecord(row: QueryResultRow): PolysaccharideRecor
     data_quality_flags: qualityFlags as string[],
     created_at: new Date(row.created_at).toISOString(),
     updated_at: new Date(row.updated_at).toISOString(),
+    ...deletionMetadata,
   } as PolysaccharideRecord;
 }
 
@@ -88,6 +96,30 @@ function recordValues(record: PolysaccharideRecord) {
 
 export async function insertPostgresRecord(record: PolysaccharideRecord) {
   return insertPostgresRecordWithClient(getPostgresPool(), record);
+}
+
+async function insertPostgresAuditLog(
+  client: PostgresQueryExecutor,
+  actorId: string,
+  action: "create" | "update" | "soft_delete" | "restore",
+  entityId: string,
+  changedFields: Record<string, unknown>,
+) {
+  await client.query(`
+    INSERT INTO audit_logs
+      (id, actor_type, actor_id, action, entity_type, entity_id, changed_fields)
+    VALUES ($1, 'admin', $2, $3, 'polysaccharide_record', $4, $5::jsonb)
+  `, [randomUUID(), actorId, action, entityId, JSON.stringify(changedFields)]);
+}
+
+export function createPostgresRecordWithAudit(record: PolysaccharideRecord, actorId: string) {
+  return withPostgresTransaction(async (client) => {
+    const created = await insertPostgresRecordWithClient(client, record);
+    await insertPostgresAuditLog(client, actorId, "create", record.id, {
+      fields: Object.fromEntries(scientificColumns.map((key) => [key, true])),
+    });
+    return created;
+  });
 }
 
 export async function insertPostgresRecordWithClient(
@@ -148,6 +180,94 @@ export async function updatePostgresRecord(
   } finally {
     client.release();
   }
+}
+
+export async function updatePostgresRecordWithAudit(
+  id: string,
+  update: (record: PolysaccharideRecord) => PolysaccharideRecord,
+  actorId: string,
+  changedFields: Record<string, unknown>,
+) {
+  return withPostgresTransaction(async (client) => {
+    const updated = await updatePostgresRecordWithClient(client, id, update);
+    if (updated) await insertPostgresAuditLog(client, actorId, "update", id, changedFields);
+    return updated;
+  });
+}
+
+export async function softDeletePostgresRecord(
+  id: string,
+  actorId: string,
+  reason: string,
+  expectedName: string,
+) {
+  const client = await getPostgresPool().connect();
+  try {
+    return await runPostgresSoftDelete(client, id, actorId, reason, expectedName);
+  } finally {
+    client.release();
+  }
+}
+
+export async function runPostgresSoftDelete(
+  client: PostgresQueryExecutor,
+  id: string,
+  actorId: string,
+  reason: string,
+  expectedName: string,
+) {
+  const normalizedReason = validateDeletionReason(reason);
+  return await runPostgresTransaction(client, async () => {
+    const selected = await client.query(
+      "SELECT * FROM polysaccharide_records WHERE id = $1 AND deleted_at IS NULL FOR UPDATE",
+      [id],
+    );
+    if (!selected.rows[0]) throw new RecordLifecycleError("NOT_ACTIVE", "记录不存在或已被删除");
+    if (String(selected.rows[0].standard_name) !== expectedName) {
+      throw new RecordLifecycleError("NAME_MISMATCH", "确认名称与记录标准名称不一致");
+    }
+    const deletedAt = new Date().toISOString();
+    await client.query(`
+      UPDATE polysaccharide_records
+      SET deleted_at = $1, deleted_by = $2, deletion_reason = $3
+      WHERE id = $4 AND deleted_at IS NULL
+    `, [deletedAt, actorId, normalizedReason, id]);
+    await insertPostgresAuditLog(client, actorId, "soft_delete", id, {
+      deleted_at: deletedAt,
+      deletion_reason: normalizedReason,
+    });
+    return mapPostgresRowToRecord(selected.rows[0]);
+  });
+}
+
+export async function restorePostgresRecord(id: string, actorId: string) {
+  const client = await getPostgresPool().connect();
+  try {
+    return await runPostgresRestore(client, id, actorId);
+  } finally {
+    client.release();
+  }
+}
+
+export function runPostgresRestore(
+  client: PostgresQueryExecutor,
+  id: string,
+  actorId: string,
+) {
+  return runPostgresTransaction(client, async () => {
+    const selected = await client.query(
+      "SELECT * FROM polysaccharide_records WHERE id = $1 AND deleted_at IS NOT NULL FOR UPDATE",
+      [id],
+    );
+    if (!selected.rows[0]) throw new RecordLifecycleError("NOT_DELETED", "记录不存在或不在回收站");
+    await client.query(`
+      UPDATE polysaccharide_records
+      SET deleted_at = NULL, deleted_by = NULL, deletion_reason = NULL, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1 AND deleted_at IS NOT NULL
+    `, [id]);
+    await insertPostgresAuditLog(client, actorId, "restore", id, { restored: true });
+    return mapPostgresRowToRecord(selected.rows[0]);
+  });
 }
 
 export async function runPostgresTransaction<T>(

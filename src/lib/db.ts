@@ -3,15 +3,23 @@ import { computeQualityFlags } from "./quality";
 import {
   getDatabase,
   insertRecord,
+  insertRecordWithAudit,
   replaceRecord,
   selectRecordById,
   selectRecords,
+  softDeleteRecord as softDeleteSqliteRecord,
+  restoreSqliteRecord,
+  updateRecordWithAudit,
 } from "./sqlite";
 import {
   insertPostgresRecord,
   selectPostgresRecordById,
   selectPostgresRecords,
   updatePostgresRecord,
+  createPostgresRecordWithAudit,
+  updatePostgresRecordWithAudit,
+  softDeletePostgresRecord,
+  restorePostgresRecord,
 } from "./postgres";
 
 type DatabaseEnvironment = Record<string, string | undefined>;
@@ -46,7 +54,7 @@ export async function getRecordByIdIncludingDeleted(
     : selectRecordById(id, { includeDeleted: true });
 }
 
-export async function createRecord(input: PolysaccharideRecord): Promise<PolysaccharideRecord> {
+export async function createRecord(input: PolysaccharideRecord, actorId?: string): Promise<PolysaccharideRecord> {
   const now = new Date().toISOString();
   const record = {
     ...input,
@@ -55,15 +63,20 @@ export async function createRecord(input: PolysaccharideRecord): Promise<Polysac
     updated_at: now,
     data_quality_flags: computeQualityFlags(input, new Date().getFullYear()),
   };
-  return usesPostgres() ? insertPostgresRecord(record) : insertRecord(record);
+  if (!actorId) return usesPostgres() ? insertPostgresRecord(record) : insertRecord(record);
+  return usesPostgres()
+    ? createPostgresRecordWithAudit(record, actorId)
+    : insertRecordWithAudit(record, actorId);
 }
 
 export async function updateRecord(
   id: string,
   input: Partial<PolysaccharideRecord>,
+  actorId?: string,
 ): Promise<PolysaccharideRecord | null> {
+  const changedFieldNames: Record<string, true> = {};
   if (usesPostgres()) {
-    return updatePostgresRecord(id, (existing) => {
+    const update = (existing: PolysaccharideRecord) => {
       const {
         id: _inputId,
         created_at: _createdAt,
@@ -77,9 +90,16 @@ export async function updateRecord(
         id,
         updated_at: new Date().toISOString(),
       };
+      Object.keys(editableFields).forEach((key) => {
+        const field = key as keyof PolysaccharideRecord;
+        if (existing[field] !== (editableFields as Record<string, unknown>)[key]) changedFieldNames[key] = true;
+      });
       updated.data_quality_flags = computeQualityFlags(updated, new Date().getFullYear());
       return updated;
-    });
+    };
+    return actorId
+      ? updatePostgresRecordWithAudit(id, update, actorId, changedFieldNames)
+      : updatePostgresRecord(id, update);
   }
   const update = getDatabase().transaction(() => {
     const existing = selectRecordById(id);
@@ -97,8 +117,31 @@ export async function updateRecord(
       id,
       updated_at: new Date().toISOString(),
     };
+    Object.keys(editableFields).forEach((key) => {
+      const field = key as keyof PolysaccharideRecord;
+      if (existing[field] !== (editableFields as Record<string, unknown>)[key]) changedFieldNames[key] = true;
+    });
     updated.data_quality_flags = computeQualityFlags(updated, new Date().getFullYear());
-    return replaceRecord(updated);
+    return actorId
+      ? updateRecordWithAudit(updated, actorId, changedFieldNames)
+      : replaceRecord(updated);
   });
   return update.immediate();
+}
+
+export async function softDeleteRecord(
+  id: string,
+  admin: string,
+  reason: string,
+  expectedName: string,
+) {
+  return usesPostgres()
+    ? softDeletePostgresRecord(id, admin, reason, expectedName)
+    : softDeleteSqliteRecord(id, admin, reason, expectedName);
+}
+
+export async function restoreRecord(id: string, admin: string) {
+  return usesPostgres()
+    ? restorePostgresRecord(id, admin)
+    : restoreSqliteRecord(id, admin);
 }

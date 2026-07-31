@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   createRecord: vi.fn(),
   getRecordById: vi.fn(),
   updateRecord: vi.fn(),
+  softDeleteRecord: vi.fn(),
+  restoreRecord: vi.fn(),
   requireAdmin: vi.fn(),
   revalidatePath: vi.fn(),
   redirect: vi.fn((path: string) => {
@@ -18,6 +20,8 @@ vi.mock("@/lib/db", () => ({
   createRecord: mocks.createRecord,
   getRecordById: mocks.getRecordById,
   updateRecord: mocks.updateRecord,
+  softDeleteRecord: mocks.softDeleteRecord,
+  restoreRecord: mocks.restoreRecord,
 }));
 vi.mock("@/lib/auth", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
@@ -25,6 +29,8 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
 import {
   createRecordAction,
+  restoreRecordAction,
+  softDeleteRecordAction,
   updateRecordAction,
 } from "./(protected)/records/actions";
 import { initialRecordActionState } from "../../lib/record-validation";
@@ -78,6 +84,7 @@ describe("后台记录 Server Actions", () => {
         standard_name: "测试多糖",
         publication_year: 2026,
       }),
+      "administrator",
     );
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/database");
   });
@@ -110,6 +117,7 @@ describe("后台记录 Server Actions", () => {
     expect(mocks.updateRecord).toHaveBeenCalledWith(
       "poly-0001",
       expect.objectContaining({ publication_year: 2026 }),
+      "administrator",
     );
   });
 
@@ -135,6 +143,7 @@ describe("后台记录 Server Actions", () => {
         doi: "legacy DOI value",
         source_url: "legacy source reference",
       }),
+      "administrator",
     );
   });
 
@@ -173,5 +182,81 @@ describe("后台记录 Server Actions", () => {
 
     expect(mocks.requireAdmin).toHaveBeenCalledBefore(mocks.getRecordById);
     expect(mocks.updateRecord).not.toHaveBeenCalled();
+  });
+
+  it("删除要求完整标准名称与非空原因并返回结构化中文错误", async () => {
+    const formData = new FormData();
+    formData.set("expectedName", "错误名称");
+    formData.set("reason", "");
+
+    const state = await softDeleteRecordAction("poly-0001", { status: "idle" }, formData);
+
+    expect(state).toEqual(expect.objectContaining({
+      status: "error",
+      fieldErrors: expect.objectContaining({
+        expectedName: expect.any(String),
+        reason: expect.any(String),
+      }),
+    }));
+    expect(mocks.requireAdmin).toHaveBeenCalledOnce();
+    expect(mocks.softDeleteRecord).not.toHaveBeenCalled();
+  });
+
+  it("管理员确认后软删除并刷新公共与后台路径", async () => {
+    const record = importedRecords[0] as PolysaccharideRecord;
+    const formData = new FormData();
+    formData.set("expectedName", record.standard_name);
+    formData.set("reason", "重复记录");
+    mocks.softDeleteRecord.mockResolvedValue(record);
+
+    const state = await softDeleteRecordAction(record.id, { status: "idle" }, formData);
+
+    expect(state).toMatchObject({ status: "success" });
+    expect(mocks.softDeleteRecord).toHaveBeenCalledWith(
+      record.id,
+      "administrator",
+      "重复记录",
+      record.standard_name,
+    );
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/database");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/trash");
+  });
+
+  it.each([499, 500])("删除 Action 接受 %i 字符原因", async (length) => {
+    const record = importedRecords[0] as PolysaccharideRecord;
+    const formData = new FormData();
+    formData.set("expectedName", record.standard_name);
+    formData.set("reason", "原".repeat(length));
+    mocks.softDeleteRecord.mockResolvedValue(record);
+
+    const state = await softDeleteRecordAction(record.id, { status: "idle" }, formData);
+
+    expect(state.status).toBe("success");
+    expect(mocks.softDeleteRecord).toHaveBeenCalledOnce();
+  });
+
+  it("删除 Action 拒绝绕过浏览器 maxLength 的 501 字符原因", async () => {
+    const record = importedRecords[0] as PolysaccharideRecord;
+    const formData = new FormData();
+    formData.set("expectedName", record.standard_name);
+    formData.set("reason", "原".repeat(501));
+
+    const state = await softDeleteRecordAction(record.id, { status: "idle" }, formData);
+
+    expect(state).toMatchObject({
+      status: "error",
+      fieldErrors: { reason: "删除原因不能超过 500 个字符" },
+    });
+    expect(mocks.softDeleteRecord).not.toHaveBeenCalled();
+  });
+
+  it("恢复操作重新鉴权且不能由客户端指定操作者", async () => {
+    mocks.restoreRecord.mockResolvedValue(importedRecords[0]);
+
+    const state = await restoreRecordAction("poly-0001", { status: "idle" });
+
+    expect(mocks.requireAdmin).toHaveBeenCalledOnce();
+    expect(mocks.restoreRecord).toHaveBeenCalledWith("poly-0001", "administrator");
+    expect(state).toMatchObject({ status: "success" });
   });
 });

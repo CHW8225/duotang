@@ -11,7 +11,8 @@
     "verify:import": "python scripts/verify-excel-import.py",
     "migrate:seed:postgres": "tsx scripts/migrate-seed-to-postgres.ts",
     "test:postgres:integration": "tsx scripts/verify-postgres-integration.ts",
-    "test:postgres:user-library": "tsx scripts/verify-postgres-user-library.ts"
+    "test:postgres:user-library": "tsx scripts/verify-postgres-user-library.ts",
+    "test:postgres:record-lifecycle": "tsx scripts/verify-postgres-record-lifecycle.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

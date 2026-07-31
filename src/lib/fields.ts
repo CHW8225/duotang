@@ -55,6 +55,9 @@ export type PolysaccharideRecord = {
   data_quality_flags: string[];
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+  deletion_reason?: string | null;
 };
 
 export type FieldDefinition = {
