@@ -1,8 +1,13 @@
 import type { PolysaccharideRecord } from "./fields";
-import { getPolysaccharideDisplayName } from "./display";
+import {
+  getMonosaccharideComposition,
+  getPolysaccharideDisplayName,
+} from "./display";
 import {
   getBilingualSpeciesName,
   normalizeActivityCategories,
+  normalizePrimaryActivityCategories,
+  PRIMARY_ACTIVITY_CATEGORIES,
   normalizeEvidenceLevel,
   normalizeExperimentType,
   normalizeSourceCategory,
@@ -73,6 +78,7 @@ const searchableText = (record: PolysaccharideRecord) =>
     record.doi,
     record.monosaccharide_original,
     record.monosaccharide_standardized,
+    getMonosaccharideComposition(record),
     record.monosaccharide_ratio,
     record.activity_category,
     ...normalizeActivityCategories(record.activity_category),
@@ -84,7 +90,7 @@ const searchableText = (record: PolysaccharideRecord) =>
     .join(" ")
     .toLowerCase();
 
-const activityFacets = normalizeActivityCategories;
+const activityFacets = normalizePrimaryActivityCategories;
 
 const firstQueryValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -106,16 +112,17 @@ const evidenceRank = (value: string) => {
 };
 
 export function activityFacetValues(records: PolysaccharideRecord[]) {
-  return normalizeActivityCategories(
-    records.flatMap((record) => activityFacets(record.activity_category)).join("、"),
+  const values = new Set(
+    records.flatMap((record) => activityFacets(record.activity_category)),
   );
+  return PRIMARY_ACTIVITY_CATEGORIES.filter((category) => values.has(category));
 }
 
 export function filterRecords(records: PolysaccharideRecord[], filters: RecordFilters) {
   const keyword = filters.keyword?.trim().toLowerCase();
   const species = filters.species ? normalizedText(filters.species) : "";
   const activityCategory = filters.activityCategory
-    ? normalizeActivityCategories(filters.activityCategory)[0] ?? ""
+    ? normalizePrimaryActivityCategories(filters.activityCategory)[0] ?? ""
     : "";
   const sourceCategory = filters.sourceCategory
     ? normalizeSourceCategory(filters.sourceCategory)
@@ -160,7 +167,7 @@ export function filterRecords(records: PolysaccharideRecord[], filters: RecordFi
     if (
       monosaccharide
       && !normalizedText(
-        `${record.monosaccharide_standardized} ${record.monosaccharide_original}`,
+        `${record.monosaccharide_standardized} ${record.monosaccharide_original} ${getMonosaccharideComposition(record)}`,
       ).includes(monosaccharide)
     ) {
       return false;

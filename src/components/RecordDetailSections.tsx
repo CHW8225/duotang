@@ -2,7 +2,7 @@ import type { FieldDefinition, FieldGroup, PolysaccharideRecord } from "../lib/f
 import { FIELD_DEFINITIONS } from "../lib/fields";
 import {
   getBilingualSpeciesName,
-  normalizeActivityCategories,
+  normalizePrimaryActivityCategories,
   normalizeEvidenceLevel,
   normalizeExperimentType,
   normalizeSourceCategory,
@@ -26,7 +26,7 @@ function fieldValue(record: PolysaccharideRecord, field: FieldDefinition) {
       normalized = normalizeSourceCategory(String(value));
       break;
     case "activity_category":
-      normalized = normalizeActivityCategories(String(value)).join("、");
+      normalized = normalizePrimaryActivityCategories(String(value)).join("、");
       break;
     case "evidence_level":
       normalized = normalizeEvidenceLevel(String(value));

@@ -19,7 +19,7 @@ describe("RecordDetailSections", () => {
 
     expect(html).toContain("佛手（Citrus medica L. var. sarcodactylis）");
     expect(html).toContain('title="微生物,植物">植物、微生物</span>');
-    expect(html).toContain('title="抗氧化活性；降血糖活性">抗氧化、降糖</span>');
+    expect(html).toContain('title="抗氧化活性；降血糖活性">抗氧化、降血糖</span>');
     expect(html).toContain('title="体外实验">体外</span>');
     expect(html).toContain('title="体外化学实验">体外实验</span>');
     expect(html).toContain('title="初步完整">初步</span>');

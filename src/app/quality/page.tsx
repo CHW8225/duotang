@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { getRecords } from "@/lib/db";
 import { QUALITY_FLAG_LABELS, type QualityFlag } from "@/lib/quality";
 import { countQualityFlags, futureYearRecords } from "@/lib/public-data";
@@ -38,7 +36,6 @@ export default async function QualityPage() {
         <h2>质量方法</h2>
         <p>导入时对关键字段缺失、异常发表年份和受控术语可归类性进行确定性检查，规则版本为 {TERMINOLOGY_VERSION}。</p>
         <p>系统保留原始录入值；规范化值仅用于展示、筛选和统计。详细问题需要管理员登录后逐条核对。</p>
-        <Link className="text-link" href="/dictionary">查看字段与术语说明</Link>
       </section>
     </main>
   );

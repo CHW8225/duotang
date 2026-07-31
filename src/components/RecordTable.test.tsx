@@ -31,7 +31,7 @@ describe("RecordTable", () => {
     expect(html).not.toContain("<th>Review</th>");
     expect(html).toContain('title="10.1016/j.foodchem.2024.138888"');
     expect(html).toContain(">10.1016/j.foodchem.2024.138888<");
-    expect(html).toContain('title="Glc:Gal:Man"');
+    expect(html).toContain('title="葡萄糖（Glc）、半乳糖（Gal）、甘露糖（Man）"');
     expect(html).toContain(">4:2:1<");
     expect(html).toContain(">查看详情<");
   });
@@ -63,7 +63,7 @@ describe("RecordTable", () => {
     }]} />);
 
     expect(html).toContain('title="抗氧化活性；降血糖活性"');
-    expect(html).toContain(">抗氧化、降糖<");
+    expect(html).toContain(">抗氧化、降血糖<");
     expect(html).toContain('title="体外实验"');
     expect(html).toContain(">体外<");
   });

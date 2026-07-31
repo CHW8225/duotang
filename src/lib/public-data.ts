@@ -1,6 +1,6 @@
 import type { PolysaccharideRecord } from "./fields";
 import {
-  normalizeActivityCategories,
+  normalizePrimaryActivityCategories,
   normalizeEvidenceLevel,
   normalizeSourceCategory,
 } from "./terminology";
@@ -17,7 +17,7 @@ export function topValues(
   records.forEach((record) => {
     const rawValue = record[field].trim();
     const values = field === "activity_category"
-      ? normalizeActivityCategories(rawValue)
+      ? normalizePrimaryActivityCategories(rawValue)
       : [field === "source_category"
           ? normalizeSourceCategory(rawValue)
           : normalizeEvidenceLevel(rawValue)];

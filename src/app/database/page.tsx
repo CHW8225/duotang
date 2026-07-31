@@ -13,6 +13,7 @@ import {
   getBilingualSpeciesName,
   normalizeEvidenceLevel,
   normalizeExperimentType,
+  normalizeMonosaccharideComposition,
   normalizeSourceCategory,
   normalizeStructureCompleteness,
 } from "@/lib/terminology";
@@ -39,6 +40,7 @@ const buildOptions = (records: Awaited<ReturnType<typeof getRecords>>): FilterOp
         (record.monosaccharide_standardized || record.monosaccharide_original)
           .split(/[、,，;；:/|+\s]+/),
       )
+      .map((value) => normalizeMonosaccharideComposition(value))
       .filter((value) => value.length <= 24),
   ),
   years: [...new Set(records.flatMap((record) => record.publication_year ?? []))].sort(

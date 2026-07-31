@@ -17,7 +17,6 @@ describe("公开界面中文化", () => {
     const source = [
       "src/app/page.tsx",
       "src/app/database/page.tsx",
-      "src/app/dictionary/page.tsx",
       "src/app/quality/page.tsx",
       "src/app/records/[id]/page.tsx",
       "src/components/SiteHeader.tsx",
@@ -38,6 +37,12 @@ describe("公开界面中文化", () => {
     ]) {
       expect(source).not.toContain(phrase);
     }
+  });
+
+  it("主导航不再展示数据字典", () => {
+    const source = readSource("src/components/SiteHeader.tsx");
+    expect(source).not.toContain("数据字典");
+    expect(source).not.toContain("/dictionary");
   });
 
   it("前台检索区提供核心与高级科研筛选", () => {

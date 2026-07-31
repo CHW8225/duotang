@@ -17,7 +17,7 @@ import {
 } from "../lib/selection";
 import {
   getBilingualSpeciesName,
-  normalizeActivityCategories,
+  normalizePrimaryActivityCategories,
   normalizeEvidenceLevel,
 } from "../lib/terminology";
 import { QualityBadge } from "./QualityBadge";
@@ -26,10 +26,10 @@ const STORAGE_KEY = "polysaccharide-selected-records";
 
 type Props = {
   records: PolysaccharideRecord[];
-  currentQuery: string;
+  currentQuery?: string;
 };
 
-export function RecordTable({ records, currentQuery }: Props) {
+export function RecordTable({ records, currentQuery = "" }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedRecords, setSelectedRecords] = useState<PolysaccharideRecord[]>([]);
   const [onlySelected, setOnlySelected] = useState(false);
@@ -154,6 +154,18 @@ export function RecordTable({ records, currentQuery }: Props) {
 
       <div className="table-wrap">
         <table className="record-table">
+          <colgroup>
+            <col className="record-table__col-select" />
+            <col className="record-table__col-name" />
+            <col className="record-table__col-species" />
+            <col className="record-table__col-composition" />
+            <col className="record-table__col-ratio" />
+            <col className="record-table__col-activity" />
+            <col className="record-table__col-evidence" />
+            <col className="record-table__col-year" />
+            <col className="record-table__col-doi" />
+            <col className="record-table__col-detail" />
+          </colgroup>
           <thead>
             <tr>
               <th className="record-table__select">
@@ -200,15 +212,17 @@ export function RecordTable({ records, currentQuery }: Props) {
                   <td className="record-table__primary record-table__sticky" title={displayName}>
                     {displayName}
                   </td>
-                  <td className="record-table__clamp" title={getBilingualSpeciesName(record.source_species)}>
-                    {getBilingualSpeciesName(record.source_species)}
+                  <td title={getBilingualSpeciesName(record.source_species)}>
+                    <span className="record-table__clamp">
+                      {getBilingualSpeciesName(record.source_species)}
+                    </span>
                   </td>
                   <td className="record-table__composition" title={composition}>
                     <span>{composition}</span>
                   </td>
                   <td className="record-table__ratio" title={ratio}>{ratio}</td>
-                  <td><QualityBadge originalValue={record.activity_category} value={normalizeActivityCategories(record.activity_category).join("、")} /></td>
-                  <td><QualityBadge originalValue={record.evidence_level} value={normalizeEvidenceLevel(record.evidence_level)} /></td>
+                  <td className="record-table__badge"><QualityBadge originalValue={record.activity_category} value={normalizePrimaryActivityCategories(record.activity_category).join("、")} /></td>
+                  <td className="record-table__badge"><QualityBadge originalValue={record.evidence_level} value={normalizeEvidenceLevel(record.evidence_level)} /></td>
                   <td>{record.publication_year ?? "-"}</td>
                   <td className="record-table__doi" title={doi}>
                     {record.doi ? (

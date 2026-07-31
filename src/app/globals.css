@@ -684,11 +684,22 @@ a:focus-visible {
 
 .record-table {
   width: 100%;
-  min-width: 1180px;
+  min-width: 1202px;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 13px;
 }
+
+.record-table__col-select { width: 42px; }
+.record-table__col-name { width: 175px; }
+.record-table__col-species { width: 160px; }
+.record-table__col-composition { width: 190px; }
+.record-table__col-ratio { width: 135px; }
+.record-table__col-activity { width: 115px; }
+.record-table__col-evidence { width: 105px; }
+.record-table__col-year { width: 60px; }
+.record-table__col-doi { width: 145px; }
+.record-table__col-detail { width: 75px; }
 
 .record-table th {
   position: sticky;
@@ -730,7 +741,6 @@ a:focus-visible {
   position: sticky;
   z-index: 1;
   left: 0;
-  width: 180px;
   background: var(--surface);
 }
 
@@ -748,7 +758,7 @@ th.record-table__sticky {
 }
 
 .record-table__composition {
-  width: 205px;
+  overflow: hidden;
 }
 
 .record-table__composition span {
@@ -760,14 +770,23 @@ th.record-table__sticky {
 }
 
 .record-table__ratio {
+  overflow: hidden;
   color: var(--teal-dark);
   font-family: Consolas, "SFMono-Regular", monospace;
   font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.record-table__badge {
+  overflow: hidden;
+}
+
+.record-table__badge .quality-badge {
+  max-width: 100%;
+}
+
 .record-table__doi {
-  width: 155px;
   overflow: hidden;
   color: var(--teal-dark);
   font-family: Consolas, "SFMono-Regular", monospace;
@@ -981,50 +1000,6 @@ th.record-table__sticky {
   overflow-wrap: anywhere;
   font-size: 14px;
   line-height: 1.5;
-}
-
-.dictionary-groups {
-  display: grid;
-  gap: 32px;
-  margin-top: 36px;
-}
-
-.dictionary-group {
-  min-width: 0;
-  padding-top: 12px;
-  border-top: 2px solid var(--cyan);
-}
-
-.dictionary-table {
-  overflow: hidden;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  background: var(--surface);
-}
-
-.dictionary-row {
-  display: grid;
-  grid-template-columns: 1.2fr 1.5fr 1fr .55fr;
-  gap: 16px;
-  padding: 11px 14px;
-  border-top: 1px solid var(--line);
-  font-size: 14px;
-}
-
-.dictionary-row--head {
-  border-top: 0;
-  background: var(--surface-soft);
-  color: var(--navy);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.dictionary-row code {
-  min-width: 0;
-  color: var(--navy);
-  font-size: 12px;
-  overflow-wrap: anywhere;
 }
 
 .quality-summary {
@@ -1317,20 +1292,6 @@ th.record-table__sticky {
 
   .filter-field--wide {
     grid-column: span 2;
-  }
-
-  .dictionary-row {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .dictionary-row--head {
-    display: none;
-  }
-
-  .dictionary-row span:nth-of-type(2),
-  .dictionary-row span:nth-of-type(3) {
-    color: var(--muted);
-    font-size: 12px;
   }
 
   .quality-summary {

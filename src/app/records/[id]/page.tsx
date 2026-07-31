@@ -5,7 +5,7 @@ import { RecordDetailSections } from "@/components/RecordDetailSections";
 import { QualityBadge } from "@/components/QualityBadge";
 import {
   getBilingualSpeciesName,
-  normalizeActivityCategories,
+  normalizePrimaryActivityCategories,
   normalizeEvidenceLevel,
 } from "@/lib/terminology";
 import { getRecordById } from "@/lib/db";
@@ -35,7 +35,7 @@ export default async function RecordPage({
     ["单糖组成", getMonosaccharideComposition(record)],
     ["组成比例", getMonosaccharideRatio(record)],
     ["分子量", [record.molecular_weight_value, record.molecular_weight_unit].filter(Boolean).join(" ") || "未记录"],
-    ["活性", normalizeActivityCategories(record.activity_category).join("、") || "未记录"],
+    ["活性", normalizePrimaryActivityCategories(record.activity_category).join("、") || "未记录"],
     ["证据等级", normalizeEvidenceLevel(record.evidence_level) || "未记录"],
   ];
   const doi = getDisplayDoi(record);
@@ -46,7 +46,7 @@ export default async function RecordPage({
       <h1>{record.standard_name || record.english_name || "未命名记录"}</h1>
       <p className="page-intro">{record.english_name}</p>
       <div className="record-statuses">
-        <QualityBadge originalValue={record.activity_category} value={normalizeActivityCategories(record.activity_category).join("、")} />
+        <QualityBadge originalValue={record.activity_category} value={normalizePrimaryActivityCategories(record.activity_category).join("、")} />
         <QualityBadge originalValue={record.evidence_level} value={normalizeEvidenceLevel(record.evidence_level)} />
         <QualityBadge value={record.review_status} tone="attention" />
       </div>

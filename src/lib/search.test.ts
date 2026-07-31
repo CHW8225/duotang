@@ -147,15 +147,15 @@ describe("filterRecords", () => {
       record({ activity_category: "完整" }),
     ]);
 
-    expect(options).toEqual(["抗氧化", "降糖", "抗糖尿病"]);
+    expect(options).toEqual(["抗氧化", "降血糖", "抗糖尿病"]);
   });
 
-  it("matches all 331 real records containing the antioxidant facet", () => {
+  it("matches all real records containing the standardized antioxidant facet", () => {
     expect(
       filterRecords(importedRecords as PolysaccharideRecord[], {
         activityCategory: "抗氧化",
       }),
-    ).toHaveLength(331);
+    ).toHaveLength(332);
   });
 
   it("filters by evidence level", () => {

@@ -23,6 +23,7 @@ afterEach(async () => {
     // The RED phase intentionally runs before the SQLite module exists.
   }
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   vi.resetModules();
   process.env = { ...environment };
   await Promise.all(
@@ -38,7 +39,7 @@ describe("SQLite record database", () => {
     temporaryDirectories.push(directory);
     vi.spyOn(process, "cwd").mockReturnValue(directory);
     delete process.env.DATABASE_PATH;
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
     const database = await import("./db");
 
     await expect(database.getRecords()).resolves.toHaveLength(772);
@@ -49,7 +50,7 @@ describe("SQLite record database", () => {
 
   it("fails loudly in production without an explicit database path", async () => {
     delete process.env.DATABASE_PATH;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     const database = await import("./db");
 
     await expect(database.getRecords()).rejects.toThrow(
@@ -59,7 +60,7 @@ describe("SQLite record database", () => {
 
   it("accepts an explicit absolute database path in production", async () => {
     const databasePath = await useTemporaryDatabase();
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     const database = await import("./db");
 
     await expect(database.getRecords()).resolves.toHaveLength(772);

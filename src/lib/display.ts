@@ -1,4 +1,5 @@
 import type { PolysaccharideRecord } from "./fields";
+import { normalizeMonosaccharideComposition } from "./terminology";
 
 type CompositionRecord = Pick<
   PolysaccharideRecord,
@@ -41,9 +42,9 @@ function hasChinese(value: string) {
 }
 
 export function getMonosaccharideComposition(record: CompositionRecord) {
-  return cleanDisplayValue(record.monosaccharide_standardized)
-    || cleanDisplayValue(record.monosaccharide_original)
-    || "未记录";
+  const composition = cleanDisplayValue(record.monosaccharide_standardized)
+    || cleanDisplayValue(record.monosaccharide_original);
+  return normalizeMonosaccharideComposition(composition) || "未记录";
 }
 
 export function getMonosaccharideRatio(record: RatioRecord) {

@@ -2,7 +2,6 @@ import Link from "next/link";
 
 const links = [
   ["数据检索", "/database"],
-  ["数据字典", "/dictionary"],
   ["数据质量", "/quality"],
 ];
 

@@ -18,8 +18,8 @@ const records = [
 describe("public database summaries", () => {
   it("ranks non-empty category values by frequency", () => {
     expect(topValues(records, "activity_category")).toEqual([
-      ["Antioxidant", 2],
-      ["Immunomodulatory", 1],
+      ["抗氧化", 2],
+      ["免疫调节", 1],
     ]);
   });
 

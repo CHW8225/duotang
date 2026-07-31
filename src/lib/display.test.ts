@@ -12,14 +12,14 @@ describe("getMonosaccharideComposition", () => {
     expect(getMonosaccharideComposition({
       monosaccharide_standardized: "Glc:Gal",
       monosaccharide_original: "glucose and galactose",
-    })).toBe("Glc:Gal");
+    })).toBe("葡萄糖（Glc）、半乳糖（Gal）");
   });
 
   it("标准化组成空白时回退到原始组成", () => {
     expect(getMonosaccharideComposition({
       monosaccharide_standardized: "   ",
       monosaccharide_original: "glucose and galactose",
-    })).toBe("glucose and galactose");
+    })).toBe("葡萄糖（Glc）、半乳糖（Gal）");
   });
 
   it("两个组成字段均为空时显示未记录", () => {

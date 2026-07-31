@@ -32,7 +32,7 @@ export default async function Home() {
         </form>
         <div className="home-quick-links">
           <span>常用检索</span>
-          {["抗氧化", "免疫调节", "降糖"].map((activity) => (
+          {["抗氧化", "免疫调节", "降血糖"].map((activity) => (
             <Link href={`/database?activity=${encodeURIComponent(activity)}`} key={activity}>{activity}</Link>
           ))}
           <Link href="/database?hasDoi=true">含 DOI 记录</Link>

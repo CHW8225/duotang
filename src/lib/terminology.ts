@@ -19,7 +19,7 @@ const speciesNames: Array<[string, string]> = [
   ["Passiflora edulis Sims", "百香果"],
   ["Ipomoea batatas (L.) Lam", "甘薯"],
   ["Litchi chinensis Sonn.", "荔枝"],
-  ["Dioscorea alata L.", "紫山药"],
+  ["Dioscorea alata L.", "参薯"],
   ["Acanthus ilicifolius", "老鼠簕"],
   ["Durio zibethinus", "榴莲"],
   ["Durio zibethinus Murr.", "榴莲"],
@@ -51,11 +51,58 @@ const speciesNames: Array<[string, string]> = [
   ["Piper nigrum L.", "胡椒"],
   ["Saccharum officinarum", "甘蔗"],
   ["Saccharum officinarum L.", "甘蔗"],
+  ["Siraitia grosuenorii", "罗汉果"],
+  ["Siraitia grosvenorii", "罗汉果"],
+  ["Passiflora edulia Sims", "百香果"],
+  ["Passiflora edulis", "百香果"],
+  ["Canarium album (Lour.) Raeusch", "橄榄"],
+  ["Annona squamosa L.", "番荔枝"],
+  ["Artocarpus heterophyllus Lam.", "菠萝蜜"],
+  ["Areca catechu L.", "槟榔"],
+  ["Cinnamomum cassia Presl", "肉桂"],
+  ["Manilkara zapota (L.) P. Royen", "人心果"],
+  ["Manilkara zapota L.", "人心果"],
+  ["Theobroma cacao L.", "可可"],
+  ["Annona muricata", "刺果番荔枝"],
+  ["Malpighia emarginata", "西印度樱桃"],
+  ["Carica papaya L. cv. Risheng", "番木瓜"],
+  ["Averrhoa carambola L. cv. B10", "杨桃"],
+  ["Elaeis guineensis Jacq.", "油棕"],
+  ["Anacardium occidentale", "腰果"],
+  ["Andrographis paniculata", "穿心莲"],
+  ["Andrographis paniculata (Kalmegh)", "穿心莲"],
+  ["Camellia japonica L.", "山茶"],
+  ["Corchorus capsularis", "黄麻"],
+  ["Corchorus capsularis L.", "黄麻"],
+  ["Hibiscus cannabinus L.", "洋麻"],
+  ["Clausena lansium ( Lour． ) Skeels", "黄皮"],
+  ["Synsepalum dulcificum (Schumach. & Thonn.) Daniell", "神秘果"],
+  ["Nephelium lappaceum L.", "红毛丹"],
+  ["Syzygium aromaticum", "丁香"],
+  ["Syzygium samarangense", "莲雾"],
 ];
 
-export const TERMINOLOGY_VERSION = "2026-07-31-v1";
+export const TERMINOLOGY_VERSION = "2026-07-31-v2";
 
 const speciesMap = new Map(speciesNames);
+const chineseSpeciesLatinMap = new Map<string, string>([
+  ["余甘子", "Phyllanthus emblica L."],
+  ["余甘", "Phyllanthus emblica L."],
+  ["铁皮石斛", "Dendrobium officinale Kimura et Migo"],
+  ["魔芋", "Amorphophallus konjac K. Koch"],
+  ["积雪草", "Centella asiatica (L.) Urb."],
+  ["芋头", "Colocasia esculenta (L.) Schott"],
+  ["益智", "Alpinia oxyphylla Miq."],
+  ["高良姜", "Alpinia officinarum Hance"],
+  ["阳春砂", "Amomum villosum Lour."],
+  ["金线莲", "Anoectochilus roxburghii (Wall.) Lindl."],
+  ["菠萝", "Ananas comosus (L.) Merr."],
+  ["木薯", "Manihot esculenta Crantz"],
+  ["灵芝", "Ganoderma lucidum"],
+  ["剑麻", "Agave sisalana Perrine"],
+  ["菊苣", "Cichorium intybus L."],
+  ["当归", "Angelica sinensis (Oliv.) Diels"],
+]);
 const misplacedActivityValues = new Set(["完整", "初步完整", "初步", "较完整", "中等"]);
 
 const clean = (value: string) => value.trim().replace(/\s+/g, " ");
@@ -79,7 +126,19 @@ export function getBilingualSpeciesName(value: string) {
     return `${bilingual[1].trim()}（${bilingual[2].trim()}）`;
   }
   const chineseName = speciesMap.get(species);
-  return chineseName ? `${chineseName}（${species}）` : species;
+  if (chineseName) return `${chineseName}（${species}）`;
+  const latinName = chineseSpeciesLatinMap.get(species);
+  if (latinName) return `${species}（${latinName}）`;
+  if (/[\u4e00-\u9fff]/.test(species) && !/[A-Za-z]/.test(species)) {
+    return `${species}（拉丁名待核验）`;
+  }
+  if (/[\u4e00-\u9fff]/.test(species) && /[A-Za-z]/.test(species)) {
+    return `${species}（拉丁名待核验）`;
+  }
+  if (/[A-Za-z]/.test(species) && !/[\u4e00-\u9fff]/.test(species)) {
+    return `中文名待核验（${species}）`;
+  }
+  return species;
 }
 
 export function normalizeSourceCategory(value: string) {
@@ -129,15 +188,43 @@ export function normalizeStructureCompleteness(value: string) {
 }
 
 const activityAliases: Array<[RegExp, string]> = [
-  [/^抗氧化(?:活性)?$/, "抗氧化"],
-  [/^(?:降血糖|降糖)(?:活性)?$/, "降糖"],
-  [/^(?:降血脂|降脂)(?:活性)?$/, "降脂"],
+  [/^(?:抗氧化(?:活性)?|antioxidant)$/i, "抗氧化"],
+  [/^(?:降血糖|降糖)(?:活性)?$/, "降血糖"],
+  [/^(?:抗高血糖|降血糖潜力)(?:活性)?$/, "降血糖"],
+  [/^(?:降血脂|降脂|改善血脂)(?:活性)?$/, "降血脂"],
   [/^抗炎(?:活性)?$/, "抗炎"],
   [/^抗肿瘤(?:活性)?$/, "抗肿瘤"],
-  [/^免疫调节(?:活性)?$/, "免疫调节"],
-  [/^(?:肠道菌群调节|调节肠道微生物群)(?:活性)?$/, "肠道菌群调节"],
-  [/^益生元(?:活性)?$/, "益生元"],
+  [/^抗癌(?:活性)?(?:（[^）]+）)?$/, "抗肿瘤"],
+  [/^(?:免疫调节(?:活性)?|immunomodulatory)$/i, "免疫调节"],
+  [/^(?:肠道菌群调节|调节肠道菌群|调节肠道微生物群|肠道微生态调节)(?:活性)?$/, "肠道菌群调节"],
+  [/^(?:胃肠道?调节|胃肠功能调节|肠道功能调节)(?:活性)?$/, "胃肠功能调节"],
+  [/^(?:改善肠道屏障功能|肠道屏障保护|肠道保护)(?:活性)?$/, "肠屏障保护"],
+  [/^益生元(?:作用|活性)?$/, "益生元作用"],
+  [/^(?:抑菌|抗菌)(?:活性)?$/, "抗菌"],
+  [/^抗凝血(?:活性)?$/, "抗凝血"],
+  [/^抗血栓(?:活性)?$/, "抗血栓"],
+  [/^(?:保肝|抗肝毒性|肝脏保护)(?:活性)?$/, "肝保护"],
+  [/^(?:抗肥胖|体重控制)(?:活性)?$/, "抗肥胖"],
+  [/^抗衰老(?:活性)?$/, "抗衰老"],
 ];
+
+function normalizeActivityItem(item: string) {
+  const categories: string[] = [];
+  if (/DPPH|自由基清除|总还原力|还原能力/i.test(item)) categories.push("抗氧化");
+  if (/益生元/.test(item)) categories.push("益生元作用");
+  if (/肠道菌群|肠道微生物群|肠道微生态/.test(item)) categories.push("肠道菌群调节");
+  if (/^抗肿瘤活性（[^）]+）$/.test(item)) categories.push("抗肿瘤");
+  if (/^抗炎活性（[^）]+）$/.test(item)) categories.push("抗炎");
+  if (/^(?:乳化(?:性能)?|理化特性|抗冻保护|蛋白质保护|还原剂与稳定剂|酶活性)/.test(item)) {
+    categories.push("功能性质");
+  }
+  if (/^(?:增强吞噬|促进DCs成熟|促NO|TNF-α|IL-6分泌)/.test(item)) {
+    categories.push("免疫调节");
+  }
+  if (categories.length) return categories;
+  const alias = activityAliases.find(([pattern]) => pattern.test(item));
+  return [alias?.[1] ?? item.replace(/活性$/, "")];
+}
 
 export function normalizeActivityCategories(value: string) {
   const facets = clean(value)
@@ -145,14 +232,137 @@ export function normalizeActivityCategories(value: string) {
     .map((item) => item.trim())
     .filter(Boolean)
     .filter((item) => !misplacedActivityValues.has(item))
-    .map((item) => {
-      const alias = activityAliases.find(([pattern]) => pattern.test(item));
-      return alias?.[1] ?? item.replace(/活性$/, "");
-    });
+    .flatMap(normalizeActivityItem);
   return uniqueOrdered(
     facets,
-    ["抗氧化", "降糖", "降脂", "抗炎", "抗肿瘤", "免疫调节", "肠道菌群调节", "益生元"],
+    [
+      "抗氧化",
+      "降血糖",
+      "抗糖尿病",
+      "降血脂",
+      "抗炎",
+      "抗肿瘤",
+      "免疫调节",
+      "肠道菌群调节",
+      "胃肠功能调节",
+      "肠屏障保护",
+      "益生元作用",
+      "抗菌",
+      "抗病毒",
+      "抗肥胖",
+      "肝保护",
+      "抗凝血",
+      "抗血栓",
+      "抗衰老",
+      "抗疲劳",
+      "抗过敏",
+      "代谢调节",
+      "功能性质",
+    ],
   );
+}
+
+export const PRIMARY_ACTIVITY_CATEGORIES = [
+  "抗氧化",
+  "降血糖",
+  "抗糖尿病",
+  "降血脂",
+  "抗炎",
+  "抗肿瘤",
+  "免疫调节",
+  "肠道菌群调节",
+  "胃肠功能调节",
+  "肠屏障保护",
+  "益生元作用",
+  "抗菌",
+  "抗病毒",
+  "抗肥胖",
+  "肝保护",
+  "抗凝血",
+  "抗血栓",
+  "抗衰老",
+  "抗疲劳",
+  "抗过敏",
+  "代谢调节",
+  "其他",
+] as const;
+
+const primaryActivitySet = new Set<string>(PRIMARY_ACTIVITY_CATEGORIES);
+
+export function normalizePrimaryActivityCategories(value: string) {
+  const normalized = normalizeActivityCategories(value);
+  const primary = normalized.filter((category) => primaryActivitySet.has(category));
+  if (primary.length === 0 && normalized.length > 0) return ["其他"];
+  if (primary.length > 1) return primary.filter((category) => category !== "其他");
+  return primary;
+}
+
+const monosaccharideTerms: Array<[string, string, string[]]> = [
+  ["葡萄糖", "Glc", ["glc", "glucose"]],
+  ["半乳糖", "Gal", ["gal", "galactose", "d-galactose", "d-gal"]],
+  ["阿拉伯糖", "Ara", ["ara", "arabinose"]],
+  ["鼠李糖", "Rha", ["rha", "rhamnose"]],
+  ["甘露糖", "Man", ["man", "mannose"]],
+  ["木糖", "Xyl", ["xyl", "xylose"]],
+  ["岩藻糖", "Fuc", ["fuc", "fucose"]],
+  ["葡萄糖醛酸", "GlcA", ["glca", "glc-a", "glc-ua", "glcua", "glucuronic acid"]],
+  ["半乳糖醛酸", "GalA", ["gala", "gal-a", "gal-ua", "galua", "galacturonic acid"]],
+  ["果糖", "Fru", ["fru", "fructose", "d-fructose"]],
+  ["核糖", "Rib", ["rib", "ribose", "d-ribose", "d-rib"]],
+  ["氨基葡萄糖", "GlcN", ["glcn", "glucosamine"]],
+  ["半乳糖胺", "GalN", ["galn", "galactosamine"]],
+  ["甘露糖醛酸", "ManA", ["mana", "mannuronic acid"]],
+];
+
+const monosaccharideLookup = new Map<string, string>();
+monosaccharideTerms.forEach(([chinese, abbreviation, aliases]) => {
+  const display = `${chinese}（${abbreviation}）`;
+  monosaccharideLookup.set(chinese.toLowerCase(), display);
+  monosaccharideLookup.set(abbreviation.toLowerCase(), display);
+  aliases.forEach((alias) => monosaccharideLookup.set(alias.toLowerCase(), display));
+});
+[
+  ["d-glucose", "D-葡萄糖（D-Glc）"],
+  ["d-glc", "D-葡萄糖（D-Glc）"],
+  ["d-葡萄糖", "D-葡萄糖（D-Glc）"],
+  ["d-galactose", "D-半乳糖（D-Gal）"],
+  ["d-gal", "D-半乳糖（D-Gal）"],
+  ["d-arabinose", "D-阿拉伯糖（D-Ara）"],
+  ["d-ara", "D-阿拉伯糖（D-Ara）"],
+  ["l-arabinose", "L-阿拉伯糖（L-Ara）"],
+  ["l-ara", "L-阿拉伯糖（L-Ara）"],
+  ["l-rhamnose", "L-鼠李糖（L-Rha）"],
+  ["l-rha", "L-鼠李糖（L-Rha）"],
+  ["d-mannose", "D-甘露糖（D-Man）"],
+  ["d-man", "D-甘露糖（D-Man）"],
+  ["d-xylose", "D-木糖（D-Xyl）"],
+  ["d-xyl", "D-木糖（D-Xyl）"],
+  ["l-fucose", "L-岩藻糖（L-Fuc）"],
+  ["l-fuc", "L-岩藻糖（L-Fuc）"],
+  ["glucosamine hydrochloride", "氨基葡萄糖盐酸盐（GlcN·HCl）"],
+].forEach(([alias, display]) => monosaccharideLookup.set(alias, display));
+
+export function normalizeMonosaccharideComposition(value: string) {
+  const text = clean(value);
+  if (!text) return "";
+  const items = text
+    .split(/[、,，;；|+\n]+|\band\b|和|及/iu)
+    .flatMap((item) =>
+      /^[A-Za-z-]+(?::[A-Za-z-]+)+$/.test(item.trim())
+        ? item.split(":")
+        : [item],
+    );
+  return items
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const withoutExistingPair = item
+        .replace(/[（(]\s*[A-Za-z-]+\s*[）)]$/, "")
+        .trim()
+        .toLowerCase();
+      return monosaccharideLookup.get(withoutExistingPair) ?? item;
+    })
+    .join("、");
 }
 
 type TerminologyRecord = {
@@ -160,6 +370,7 @@ type TerminologyRecord = {
   activity_category: string;
   evidence_level: string;
   structure_completeness: string;
+  monosaccharide_standardized?: string;
 };
 
 export function getTerminologyIssues(record: TerminologyRecord) {
@@ -180,8 +391,11 @@ export function getTerminologyIssues(record: TerminologyRecord) {
   if (evidence && normalizeEvidenceLevel(evidence) === evidence && !/^(体外|细胞|动物|临床|综述提及)$/.test(evidence)) {
     issues.push("证据等级无法归入受控词");
   }
-  if (/抗氧化|抗炎|抗肿瘤|降糖|降脂/.test(record.structure_completeness)) {
+  if (/抗氧化|抗炎|抗肿瘤|降糖|降血糖|降脂|降血脂/.test(record.structure_completeness)) {
     issues.push("结构完整度疑似误填活性");
+  }
+  if (/(?:^|[、,，;；:\s])Glu(?:$|[、,，;；:\s])/.test(record.monosaccharide_standardized ?? "")) {
+    issues.push("单糖缩写 Glu 待人工核对");
   }
   return issues;
 }

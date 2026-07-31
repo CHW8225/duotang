@@ -9,7 +9,7 @@ import {
   type RecordActionState,
 } from "@/lib/record-validation";
 import {
-  normalizeActivityCategories,
+  normalizePrimaryActivityCategories,
   normalizeEvidenceLevel,
   normalizeExperimentType,
   normalizeSourceCategory,
@@ -39,7 +39,7 @@ const controlledTermKeys = new Set<keyof PolysaccharideRecord>([
 const normalizeControlledTerm = (key: ControlledTermKey, value: string) => {
   switch (key) {
     case "source_category": return normalizeSourceCategory(value);
-    case "activity_category": return normalizeActivityCategories(value).join("、");
+    case "activity_category": return normalizePrimaryActivityCategories(value).join("、");
     case "evidence_level": return normalizeEvidenceLevel(value);
     case "experiment_type": return normalizeExperimentType(value);
     case "structure_completeness": return normalizeStructureCompleteness(value);
