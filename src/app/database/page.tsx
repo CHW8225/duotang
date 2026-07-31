@@ -13,8 +13,6 @@ import {
   getBilingualSpeciesName,
   EVIDENCE_LEVELS,
   normalizeEvidenceLevel,
-  normalizeExperimentType,
-  normalizeMonosaccharideComposition,
   normalizeSourceCategories,
   SOURCE_CATEGORIES,
   normalizeStructureCompleteness,
@@ -36,18 +34,8 @@ const buildOptions = (records: Awaited<ReturnType<typeof getRecords>>): FilterOp
   evidenceLevels: EVIDENCE_LEVELS.filter((level) =>
     records.some((record) => normalizeEvidenceLevel(record.evidence_level) === level),
   ),
-  experimentTypes: unique(records.map((record) => normalizeExperimentType(record.experiment_type))),
   structureCompleteness: unique(
     records.map((record) => normalizeStructureCompleteness(record.structure_completeness)),
-  ),
-  monosaccharides: unique(
-    records
-      .flatMap((record) =>
-        (record.monosaccharide_standardized || record.monosaccharide_original)
-          .split(/[、,，;；:/|+\s]+/),
-      )
-      .map((value) => normalizeMonosaccharideComposition(value))
-      .filter((value) => value.length <= 24),
   ),
   years: [...new Set(records.flatMap((record) => record.publication_year ?? []))].sort(
     (a, b) => a - b,

@@ -55,8 +55,9 @@ describe("公开界面中文化", () => {
     expect(source).toContain("高级筛选");
     expect(source).toContain("来源类别");
     expect(source).toContain("证据等级");
-    expect(source).toContain("实验类型");
     expect(source).toContain("结构完整度");
+    expect(source).not.toContain("<span>实验类型</span>");
+    expect(source).not.toContain("<span>单糖组成</span>");
   });
 
   it("无效地址显示中文空状态", () => {

@@ -5,9 +5,7 @@ export type FilterOptions = {
   species: string[];
   sourceCategories: string[];
   evidenceLevels: string[];
-  experimentTypes: string[];
   structureCompleteness: string[];
-  monosaccharides: string[];
   years: number[];
 };
 
@@ -97,13 +95,6 @@ export function RecordFilters({ filters, options }: Props) {
             </select>
           </label>
           <label className="filter-field">
-            <span>实验类型</span>
-            <select defaultValue={filters.experimentType ?? ""} name="experimentType">
-              <option value="">全部类型</option>
-              {optionList(options.experimentTypes)}
-            </select>
-          </label>
-          <label className="filter-field">
             <span>结构完整度</span>
             <select
               defaultValue={filters.structureCompleteness ?? ""}
@@ -112,18 +103,6 @@ export function RecordFilters({ filters, options }: Props) {
               <option value="">全部状态</option>
               {optionList(options.structureCompleteness)}
             </select>
-          </label>
-          <label className="filter-field">
-            <span>单糖组成</span>
-            <input
-              defaultValue={filters.monosaccharide}
-              list="monosaccharide-options"
-              name="monosaccharide"
-              placeholder="如 Glc、葡萄糖"
-            />
-            <datalist id="monosaccharide-options">
-              {optionList(options.monosaccharides)}
-            </datalist>
           </label>
           <label className="filter-field">
             <span>DOI 收录</span>
