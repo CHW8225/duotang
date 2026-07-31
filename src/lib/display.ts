@@ -24,6 +24,14 @@ const reliableSourceNameMap: Array<[RegExp, string]> = [
   [/\bcurcuma\s+longa\b/i, "姜黄"],
 ];
 
+const reliableChineseSourceNames = new Set([
+  "金线莲",
+  "晴隆金线莲",
+  "高良姜",
+  "益智",
+  "姜黄",
+]);
+
 function cleanDisplayValue(value: string | null | undefined) {
   return value?.trim() ?? "";
 }
@@ -59,7 +67,7 @@ export function getPolysaccharideDisplayName(record: NameRecord) {
 
   const sourceSpecies = cleanDisplayValue(record.source_species);
   const englishName = cleanDisplayValue(record.english_name);
-  const mappedSource = hasChinese(sourceSpecies)
+  const mappedSource = reliableChineseSourceNames.has(sourceSpecies)
     ? sourceSpecies
     : reliableSourceNameMap.find(([pattern]) => pattern.test(sourceSpecies))?.[1] ?? "";
   if (mappedSource && /\bgalactoglucan\b/i.test(englishName)) {

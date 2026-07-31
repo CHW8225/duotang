@@ -93,6 +93,17 @@ describe("filterRecords", () => {
     expect(filterRecords([compositionRecord], { keyword: "Glc:Gal" }).map(({ id }) => id)).toEqual(["composition"]);
   });
 
+  it("filters by the Chinese display name when a standard name is translated for display", () => {
+    const ganoderma = record({
+      id: "ganoderma",
+      standard_name: "Ganoderma lucidum polysaccharide",
+      english_name: "Ganoderma lucidum polysaccharide",
+      source_species: "Ganoderma lucidum",
+    });
+
+    expect(filterRecords([ganoderma], { keyword: "灵芝" }).map(({ id }) => id)).toEqual(["ganoderma"]);
+  });
+
   it("filters by source category", () => {
     expect(filterRecords(records, { sourceCategory: "Fungi" }).map(({ id }) => id)).toEqual(["mushroom"]);
   });

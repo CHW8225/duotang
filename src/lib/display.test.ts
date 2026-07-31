@@ -94,4 +94,20 @@ describe("getPolysaccharideDisplayName", () => {
       source_species: "Ganoderma lucidum",
     })).toBe("Novel polysaccharide fraction GLP-3");
   });
+
+  it("非白名单中文来源不自动拼接成正式中文名", () => {
+    expect(getPolysaccharideDisplayName({
+      standard_name: "GLP-3",
+      english_name: "Novel polysaccharide fraction GLP-3",
+      source_species: "待核对来源说明",
+    })).toBe("GLP-3");
+  });
+
+  it("非白名单拉丁来源不自动翻译", () => {
+    expect(getPolysaccharideDisplayName({
+      standard_name: "CLP-1",
+      english_name: "Example plant polysaccharide",
+      source_species: "Examplea officinalis L.",
+    })).toBe("CLP-1");
+  });
 });

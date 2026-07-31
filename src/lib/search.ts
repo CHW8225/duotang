@@ -1,4 +1,5 @@
 import type { PolysaccharideRecord } from "./fields";
+import { getPolysaccharideDisplayName } from "./display";
 
 export type RecordFilters = {
   keyword?: string;
@@ -15,6 +16,7 @@ export type RecordFilters = {
 const searchableText = (record: PolysaccharideRecord) =>
   [
     record.standard_name,
+    getPolysaccharideDisplayName(record),
     record.english_name,
     record.aliases,
     record.literature_title,
