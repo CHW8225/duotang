@@ -41,3 +41,48 @@ export function countQualityFlags(records: PolysaccharideRecord[]): Record<strin
 export function futureYearRecords(records: PolysaccharideRecord[], currentYear: number) {
   return records.filter((record) => (record.publication_year ?? 0) > currentYear);
 }
+
+const percentage = (count: number, total: number) =>
+  total === 0 ? 0 : Math.round((count / total) * 100);
+
+export function databaseMetrics(records: PolysaccharideRecord[]) {
+  const total = records.length;
+  const doiCount = records.filter((record) => record.doi.trim()).length;
+  const monosaccharideCount = records.filter(
+    (record) => record.monosaccharide_standardized.trim(),
+  ).length;
+  const reviewedCount = records.filter(
+    (record) => record.review_status === "已审核",
+  ).length;
+  const latestUpdate = records.reduce(
+    (latest, record) => record.updated_at > latest ? record.updated_at : latest,
+    "",
+  );
+
+  return {
+    total,
+    doiCount,
+    doiCoverage: percentage(doiCount, total),
+    monosaccharideCount,
+    monosaccharideCoverage: percentage(monosaccharideCount, total),
+    reviewedCount,
+    reviewedCoverage: percentage(reviewedCount, total),
+    latestUpdate,
+  };
+}
+
+export type ReturnTypeOfMetrics = ReturnType<typeof databaseMetrics>;
+
+export function publicationYearTrend(
+  records: PolysaccharideRecord[],
+): Array<[number, number]> {
+  const counts = new Map<number, number>();
+  records.forEach((record) => {
+    if (record.publication_year === null) return;
+    counts.set(
+      record.publication_year,
+      (counts.get(record.publication_year) ?? 0) + 1,
+    );
+  });
+  return [...counts.entries()].sort(([left], [right]) => left - right);
+}

@@ -40,15 +40,18 @@ describe("公开界面中文化", () => {
     }
   });
 
-  it("前台检索区只保留关键词和活性类别", () => {
+  it("前台检索区提供核心与高级科研筛选", () => {
     const source = readSource("src/components/RecordFilters.tsx");
 
-    expect(source).toContain("搜索名称、物种、活性、DOI");
-    expect(source).toContain('["activity_category", "活性类别"]');
-    expect(source).not.toContain('["source_category", "来源类别"]');
-    expect(source).not.toContain('["evidence_level", "证据等级"]');
-    expect(source).not.toContain('["structure_completeness", "结构完整度"]');
-    expect(source).not.toContain('["review_status", "审核状态"]');
+    expect(source).toContain("名称、物种、活性、单糖组成或 DOI");
+    expect(source).toContain("活性类别");
+    expect(source).toContain("来源物种");
+    expect(source).toContain("发表年份");
+    expect(source).toContain("高级筛选");
+    expect(source).toContain("来源类别");
+    expect(source).toContain("证据等级");
+    expect(source).toContain("实验类型");
+    expect(source).toContain("结构完整度");
   });
 
   it("无效地址显示中文空状态", () => {

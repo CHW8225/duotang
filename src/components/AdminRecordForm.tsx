@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { FIELD_DEFINITIONS, type FieldGroup, type PolysaccharideRecord, type ReviewStatus } from "@/lib/fields";
 import {
@@ -8,6 +8,13 @@ import {
   initialRecordActionState,
   type RecordActionState,
 } from "@/lib/record-validation";
+import {
+  normalizeActivityCategories,
+  normalizeEvidenceLevel,
+  normalizeExperimentType,
+  normalizeSourceCategory,
+  normalizeStructureCompleteness,
+} from "@/lib/terminology";
 
 type RecordFormAction = (
   state: RecordActionState,
@@ -16,6 +23,64 @@ type RecordFormAction = (
 type Props = { action: RecordFormAction; record?: PolysaccharideRecord; submitLabel: string };
 const groupLabels: Record<FieldGroup, string> = { identity: "基本信息", literature: "文献信息", source: "来源与制备", structure: "结构信息", bioactivity: "生物活性", management: "数据管理" };
 const reviewStatuses: ReviewStatus[] = ["待审核", "已审核", "需修改", "未标注"];
+type ControlledTermKey =
+  | "source_category"
+  | "activity_category"
+  | "evidence_level"
+  | "experiment_type"
+  | "structure_completeness";
+const controlledTermKeys = new Set<keyof PolysaccharideRecord>([
+  "source_category",
+  "activity_category",
+  "evidence_level",
+  "experiment_type",
+  "structure_completeness",
+]);
+const normalizeControlledTerm = (key: ControlledTermKey, value: string) => {
+  switch (key) {
+    case "source_category": return normalizeSourceCategory(value);
+    case "activity_category": return normalizeActivityCategories(value).join("、");
+    case "evidence_level": return normalizeEvidenceLevel(value);
+    case "experiment_type": return normalizeExperimentType(value);
+    case "structure_completeness": return normalizeStructureCompleteness(value);
+  }
+};
+
+function ControlledTermField({
+  accessibility,
+  error,
+  errorId,
+  fieldKey,
+  label,
+  value,
+}: {
+  accessibility: { "aria-describedby": string | undefined; "aria-invalid": boolean };
+  error?: string;
+  errorId: string;
+  fieldKey: ControlledTermKey;
+  label: string;
+  value: string;
+}) {
+  const [rawValue, setRawValue] = useState(value);
+  const normalized = normalizeControlledTerm(fieldKey, rawValue);
+  return (
+    <label className="admin-form-field">
+      <span>{label}</span>
+      <input
+        {...accessibility}
+        maxLength={fieldMaxLength(fieldKey)}
+        name={fieldKey}
+        onChange={(event) => setRawValue(event.target.value)}
+        type="text"
+        value={rawValue}
+      />
+      <span className="term-preview">
+        规范值预览：{normalized || "尚未识别"}
+      </span>
+      {error && <span className="admin-form-error" id={errorId}>{error}</span>}
+    </label>
+  );
+}
 
 export function AdminRecordForm({ action, record, submitLabel }: Props) {
   const [state, formAction, isPending] = useActionState(action, initialRecordActionState);
@@ -26,6 +91,7 @@ export function AdminRecordForm({ action, record, submitLabel }: Props) {
     const errorId = `${field.key}-error`;
     const accessibility = { "aria-describedby": error ? errorId : undefined, "aria-invalid": Boolean(error) };
     if (field.key === "review_status") return <label className="admin-form-field" key={field.key}><span>{field.label}</span><select {...accessibility} defaultValue={String(value)} name={field.key}>{reviewStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>{error && <span className="admin-form-error" id={errorId}>{error}</span>}</label>;
+    if (controlledTermKeys.has(field.key)) return <ControlledTermField accessibility={accessibility} error={error} errorId={errorId} fieldKey={field.key as ControlledTermKey} key={field.key} label={field.label} value={String(value)} />;
     if (field.multiline) return <label className="admin-form-field admin-form-field--wide" key={field.key}><span>{field.label}</span><textarea {...accessibility} defaultValue={String(value)} maxLength={fieldMaxLength(field.key)} name={field.key} rows={4} />{error && <span className="admin-form-error" id={errorId}>{error}</span>}</label>;
     return <label className="admin-form-field" key={field.key}><span>{field.label}</span><input {...accessibility} defaultValue={String(value ?? "")} max={field.key === "publication_year" ? new Date().getFullYear() + 1 : undefined} maxLength={field.key === "publication_year" ? undefined : fieldMaxLength(field.key)} min={field.key === "publication_year" ? 1800 : undefined} name={field.key} required={field.key === "standard_name"} step={field.key === "publication_year" ? 1 : undefined} type={field.key === "publication_year" ? "number" : "text"} />{error && <span className="admin-form-error" id={errorId}>{error}</span>}</label>;
   })}</div></fieldset>)}<div className="admin-form-actions"><button className="button button--primary" disabled={isPending} type="submit">{isPending ? "正在保存..." : submitLabel}</button></div></form>;

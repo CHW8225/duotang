@@ -12,62 +12,34 @@ export default async function QualityPage() {
   const flagCounts = countQualityFlags(records);
   const affected = records.filter((record) => record.data_quality_flags.length > 0);
   const futureRecords = futureYearRecords(records, new Date().getFullYear());
-  const terminologyRecords = records
-    .map((record) => ({ record, issues: getTerminologyIssues(record) }))
-    .filter(({ issues }) => issues.length > 0);
+  const terminologyCount = records.filter((record) => getTerminologyIssues(record).length).length;
 
   return (
     <main className="page-shell">
       <p className="eyebrow">数据治理概览</p>
       <h1>数据质量</h1>
       <p className="page-intro">
-        质量标记来自导入记录和术语规则 {TERMINOLOGY_VERSION}，用于定位需要进一步科研核验和补充的数据。
+        本页公开可解释的质量汇总与方法，不展示逐条问题清单。标记用于提示后续科研核验，不代表原始文献结论有误。
       </p>
       <section className="quality-summary">
         <div><span>有质量标记的记录</span><strong>{affected.length}</strong></div>
         <div><span>未来年份记录</span><strong>{futureRecords.length}</strong></div>
-        <div><span>术语待人工核对</span><strong>{terminologyRecords.length}</strong></div>
+        <div><span>术语待人工核对</span><strong>{terminologyCount}</strong></div>
       </section>
       <section className="quality-section">
-        <h2>问题统计</h2>
+        <h2>问题类型汇总</h2>
         <div className="issue-list">
           {Object.entries(flagCounts).sort(([, left], [, right]) => right - left).map(([flag, count]) => (
             <div key={flag}><span>{QUALITY_FLAG_LABELS[flag as QualityFlag] ?? flag}</span><strong>{count}</strong></div>
           ))}
         </div>
       </section>
-      <section className="quality-section"><h2>受影响记录</h2><RecordLinks records={affected} /></section>
-      <section className="quality-section"><h2>未来年份记录</h2><p className="section-note">包含 2027 年的记录。</p><RecordLinks records={futureRecords} /></section>
-      <section className="quality-section">
-        <h2>术语待人工核对</h2>
-        <ul className="record-links">
-          {terminologyRecords.map(({ record, issues }) => (
-            <li key={record.id}>
-              <div>
-                <strong>{record.standard_name || record.english_name || record.id}</strong>
-                <span>{issues.join("；")}</span>
-              </div>
-              <Link className="text-link" href={`/records/${record.id}`}>查看记录</Link>
-            </li>
-          ))}
-        </ul>
+      <section className="quality-method">
+        <h2>质量方法</h2>
+        <p>导入时对关键字段缺失、异常发表年份和受控术语可归类性进行确定性检查，规则版本为 {TERMINOLOGY_VERSION}。</p>
+        <p>系统保留原始录入值；规范化值仅用于展示、筛选和统计。详细问题需要管理员登录后逐条核对。</p>
+        <Link className="text-link" href="/dictionary">查看字段与术语说明</Link>
       </section>
     </main>
-  );
-}
-
-function RecordLinks({ records }: { records: Awaited<ReturnType<typeof getRecords>> }) {
-  return (
-    <ul className="record-links">
-      {records.map((record) => (
-        <li key={record.id}>
-          <div>
-            <strong>{record.standard_name || record.english_name || record.id}</strong>
-            <span>{record.publication_year ?? "未记录"} | {record.data_quality_flags.length} 项问题</span>
-          </div>
-          <Link className="text-link" href={`/records/${record.id}`}>查看记录</Link>
-        </li>
-      ))}
-    </ul>
   );
 }

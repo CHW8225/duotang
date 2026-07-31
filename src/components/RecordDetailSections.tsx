@@ -45,6 +45,6 @@ function fieldValue(record: PolysaccharideRecord, field: FieldDefinition) {
 export function RecordDetailSections({ record }: { record: PolysaccharideRecord }) {
   return <div className="detail-sections">{groups.map(([group, title]) => {
     const fields = FIELD_DEFINITIONS.filter((field) => field.group === group);
-    return <section className="detail-section" key={group}><h2>{title}</h2><dl>{fields.map((field) => <div key={field.key}><dt>{field.label}</dt><dd>{fieldValue(record, field)}</dd></div>)}</dl></section>;
+    return <section className="detail-section" id={group} key={group}><h2>{title}</h2><dl>{fields.map((field) => <div key={field.key}><dt>{field.label}</dt><dd>{fieldValue(record, field)}</dd></div>)}</dl></section>;
   })}</div>;
 }
