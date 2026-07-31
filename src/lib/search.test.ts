@@ -132,7 +132,17 @@ describe("filterRecords", () => {
       record({ activity_category: "抗氧化" }),
     ]);
 
-    expect(options).toEqual(["抗炎", "抗氧化"]);
+    expect(options).toEqual(["抗氧化", "抗炎"]);
+  });
+
+  it("merges synonymous activity labels and excludes misplaced structure labels", () => {
+    const options = activityFacetValues([
+      record({ activity_category: "抗氧化活性；降血糖活性" }),
+      record({ activity_category: "抗糖尿病" }),
+      record({ activity_category: "完整" }),
+    ]);
+
+    expect(options).toEqual(["抗氧化", "降糖", "抗糖尿病"]);
   });
 
   it("matches all 331 real records containing the antioxidant facet", () => {
@@ -145,6 +155,23 @@ describe("filterRecords", () => {
 
   it("filters by evidence level", () => {
     expect(filterRecords(records, { evidenceLevel: "Animal" }).map(({ id }) => id)).toEqual(["mushroom"]);
+  });
+
+  it("normalizes free-text filter values before comparison", () => {
+    const variants = [
+      record({
+        id: "variant",
+        source_category: "微生物,植物",
+        activity_category: "降血糖活性",
+        evidence_level: "体外实验",
+        structure_completeness: "初步完整",
+      }),
+    ];
+
+    expect(filterRecords(variants, { sourceCategory: "植物,微生物" })).toHaveLength(1);
+    expect(filterRecords(variants, { activityCategory: "降血糖活性" })).toHaveLength(1);
+    expect(filterRecords(variants, { evidenceLevel: "体外实验" })).toHaveLength(1);
+    expect(filterRecords(variants, { structureCompleteness: "初级完整" })).toHaveLength(1);
   });
 
   it("filters by publication year range", () => {

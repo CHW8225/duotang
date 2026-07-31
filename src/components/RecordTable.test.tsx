@@ -48,4 +48,23 @@ describe("RecordTable", () => {
     expect(html).toContain('title="未记录"');
     expect(html).toContain(">未记录<");
   });
+
+  it("来源物种仅在存在可靠映射时中英并列", () => {
+    const html = renderToStaticMarkup(<RecordTable records={[record]} />);
+
+    expect(html).toContain("灵芝（Ganoderma lucidum）");
+  });
+
+  it("活性和证据等级显示规范词并保留原始值", () => {
+    const html = renderToStaticMarkup(<RecordTable records={[{
+      ...record,
+      activity_category: "抗氧化活性；降血糖活性",
+      evidence_level: "体外实验",
+    }]} />);
+
+    expect(html).toContain('title="抗氧化活性；降血糖活性"');
+    expect(html).toContain(">抗氧化、降糖<");
+    expect(html).toContain('title="体外实验"');
+    expect(html).toContain(">体外<");
+  });
 });

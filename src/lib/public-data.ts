@@ -1,4 +1,9 @@
 import type { PolysaccharideRecord } from "./fields";
+import {
+  normalizeActivityCategories,
+  normalizeEvidenceLevel,
+  normalizeSourceCategory,
+} from "./terminology";
 
 type CategoryField = "source_category" | "activity_category" | "evidence_level";
 
@@ -10,8 +15,15 @@ export function topValues(
   const counts = new Map<string, number>();
 
   records.forEach((record) => {
-    const value = record[field].trim();
-    if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+    const rawValue = record[field].trim();
+    const values = field === "activity_category"
+      ? normalizeActivityCategories(rawValue)
+      : [field === "source_category"
+          ? normalizeSourceCategory(rawValue)
+          : normalizeEvidenceLevel(rawValue)];
+    values.filter(Boolean).forEach((value) => {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    });
   });
 
   return [...counts.entries()].sort(([, left], [, right]) => right - left).slice(0, limit);

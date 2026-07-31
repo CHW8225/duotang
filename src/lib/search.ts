@@ -1,5 +1,12 @@
 import type { PolysaccharideRecord } from "./fields";
 import { getPolysaccharideDisplayName } from "./display";
+import {
+  getBilingualSpeciesName,
+  normalizeActivityCategories,
+  normalizeEvidenceLevel,
+  normalizeSourceCategory,
+  normalizeStructureCompleteness,
+} from "./terminology";
 
 export type RecordFilters = {
   keyword?: string;
@@ -21,13 +28,16 @@ const searchableText = (record: PolysaccharideRecord) =>
     record.aliases,
     record.literature_title,
     record.source_species,
+    getBilingualSpeciesName(record.source_species),
     record.source_category,
+    normalizeSourceCategory(record.source_category),
     record.extraction_part,
     record.doi,
     record.monosaccharide_original,
     record.monosaccharide_standardized,
     record.monosaccharide_ratio,
     record.activity_category,
+    ...normalizeActivityCategories(record.activity_category),
     record.activity_subcategory,
     record.mechanism_pathway,
     record.key_molecules,
@@ -36,27 +46,44 @@ const searchableText = (record: PolysaccharideRecord) =>
     .join(" ")
     .toLowerCase();
 
-const activityFacets = (value: string) =>
-  value
-    .split(/[;,；，、/|+\n]+/)
-    .map((facet) => facet.trim().replace(/活性$/, ""))
-    .filter(Boolean);
+const activityFacets = normalizeActivityCategories;
 
 export function activityFacetValues(records: PolysaccharideRecord[]) {
-  return [
-    ...new Set(records.flatMap((record) => activityFacets(record.activity_category))),
-  ].sort((left, right) => left.localeCompare(right));
+  return normalizeActivityCategories(
+    records.flatMap((record) => activityFacets(record.activity_category)).join("、"),
+  );
 }
 
 export function filterRecords(records: PolysaccharideRecord[], filters: RecordFilters) {
   const keyword = filters.keyword?.trim().toLowerCase();
-  const activityCategory = filters.activityCategory?.trim().replace(/活性$/, "");
+  const activityCategory = filters.activityCategory
+    ? normalizeActivityCategories(filters.activityCategory)[0] ?? ""
+    : "";
+  const sourceCategory = filters.sourceCategory
+    ? normalizeSourceCategory(filters.sourceCategory)
+    : "";
+  const evidenceLevel = filters.evidenceLevel
+    ? normalizeEvidenceLevel(filters.evidenceLevel)
+    : "";
+  const structureCompleteness = filters.structureCompleteness
+    ? normalizeStructureCompleteness(filters.structureCompleteness)
+    : "";
   const filtered = records.filter((record) => {
     if (keyword && !searchableText(record).includes(keyword)) return false;
-    if (filters.sourceCategory && record.source_category !== filters.sourceCategory) return false;
+    if (
+      sourceCategory
+      && normalizeSourceCategory(record.source_category) !== sourceCategory
+    ) return false;
     if (activityCategory && !activityFacets(record.activity_category).includes(activityCategory)) return false;
-    if (filters.evidenceLevel && record.evidence_level !== filters.evidenceLevel) return false;
-    if (filters.structureCompleteness && record.structure_completeness !== filters.structureCompleteness) {
+    if (
+      evidenceLevel
+      && normalizeEvidenceLevel(record.evidence_level) !== evidenceLevel
+    ) return false;
+    if (
+      structureCompleteness
+      && normalizeStructureCompleteness(record.structure_completeness)
+        !== structureCompleteness
+    ) {
       return false;
     }
     if (filters.reviewStatus && record.review_status !== filters.reviewStatus) return false;

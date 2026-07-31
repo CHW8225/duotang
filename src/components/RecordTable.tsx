@@ -7,6 +7,11 @@ import {
   getPolysaccharideDisplayName,
 } from "../lib/display";
 import type { PolysaccharideRecord } from "@/lib/fields";
+import {
+  getBilingualSpeciesName,
+  normalizeActivityCategories,
+  normalizeEvidenceLevel,
+} from "../lib/terminology";
 import { QualityBadge } from "./QualityBadge";
 
 export function RecordTable({ records }: { records: PolysaccharideRecord[] }) {
@@ -44,10 +49,10 @@ export function RecordTable({ records }: { records: PolysaccharideRecord[] }) {
               <tr key={record.id}>
                 <td className="record-table__primary" title={record.standard_name || displayName}>{displayName}</td>
                 <td>{record.english_name || "未记录"}</td>
-                <td>{record.source_species || "未记录"}</td>
+                <td title={record.source_species}>{getBilingualSpeciesName(record.source_species)}</td>
                 <td>{record.publication_year ?? "-"}</td>
-                <td><QualityBadge value={record.activity_category} /></td>
-                <td><QualityBadge value={record.evidence_level} /></td>
+                <td><QualityBadge originalValue={record.activity_category} value={normalizeActivityCategories(record.activity_category).join("、")} /></td>
+                <td><QualityBadge originalValue={record.evidence_level} value={normalizeEvidenceLevel(record.evidence_level)} /></td>
                 <td className="record-table__composition" title={composition}>
                   <span>{composition}</span>
                 </td>

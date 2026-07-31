@@ -17,6 +17,16 @@ describe("public database summaries", () => {
     ]);
   });
 
+  it("merges synonymous controlled terms before ranking", () => {
+    const variants = [
+      { ...records[0], activity_category: "抗氧化活性" },
+      { ...records[1], activity_category: "抗氧化" },
+      { ...records[2], activity_category: "完整" },
+    ] as PolysaccharideRecord[];
+
+    expect(topValues(variants, "activity_category")).toEqual([["抗氧化", 2]]);
+  });
+
   it("counts every recorded quality flag across affected records", () => {
     expect(countQualityFlags(records)).toEqual({ missing_doi: 2, missing_conclusion: 1 });
   });
