@@ -5,7 +5,7 @@ import { resolveDatabaseBackend } from "./db";
 import { FIELD_DEFINITIONS, type PolysaccharideRecord } from "./fields";
 import { normalizeImportDoi, type ParsedImportRow } from "./admin-import";
 import { getDatabase } from "./sqlite";
-import { getPostgresPool, withPostgresDataWriteLock, withPostgresTransaction } from "./postgres";
+import { getPostgresPool, withPostgresDataWriteLock, withPostgresTransaction, type PostgresQueryExecutor } from "./postgres";
 
 export class ImportConflictError extends Error {}
 export class ImportStateError extends Error {}
@@ -91,6 +91,21 @@ function buildRecord(rowData: Record<string, string>, index: number): Polysaccha
   record.data_quality_flags = computeQualityFlags(record, new Date().getFullYear()); return record;
 }
 
+export async function insertPostgresImportRecords(
+  client: PostgresQueryExecutor,
+  rowDataList: Array<Record<string, string>>,
+) {
+  const columns = ["id", ...FIELD_DEFINITIONS.map(({ key }) => key), "data_quality_flags", "created_at", "updated_at"];
+  for (const [index, rowData] of rowDataList.entries()) {
+    const record = buildRecord(rowData, index);
+    await client.query(
+      `INSERT INTO polysaccharide_records (${columns.map((column) => `"${column}"`).join(",")}, sort_order)
+       VALUES (${columns.map((_, valueIndex) => `$${valueIndex + 1}`).join(",")}, nextval('polysaccharide_record_sort_order_seq'))`,
+      columns.map((key) => record[key as keyof PolysaccharideRecord]),
+    );
+  }
+}
+
 export async function confirmImportJob(id: string, actor: string) {
   if (resolveDatabaseBackend() === "postgres") return confirmPostgresJob(id, actor);
   const db = getDatabase();
@@ -141,7 +156,7 @@ async function confirmPostgresJob(id: string, actor: string) {
     const existing = (await client.query("SELECT upload_id,doi FROM polysaccharide_records FOR SHARE")).rows as Array<{ upload_id: string; doi: string }>;
     const parsed = stored.rows.map((r) => ({ rowNumber: Number(r.row_number), rowData: r.row_data, record: null, errors: r.errors, warnings: r.warnings })) as ParsedImportRow[];
     const rows = classify(parsed, existing); if (rows.some((r) => r.conflicts.length)) throw new ImportConflictError("数据库已发生变化，请重新上传并预览");
-    for (const [index, row] of rows.entries()) { const record = buildRecord(row.rowData, index); const columns = ["id", ...FIELD_DEFINITIONS.map(({ key }) => key), "data_quality_flags", "created_at", "updated_at"]; await client.query(`INSERT INTO polysaccharide_records (${columns.map((c) => `"${c}"`).join(",")},sort_order) VALUES (${columns.map((_, i) => `$${i + 1}`).join(",")},(SELECT COALESCE(MAX(sort_order),0)+1 FROM polysaccharide_records))`, columns.map((key) => record[key as keyof PolysaccharideRecord])); }
+    await insertPostgresImportRecords(client, rows.map(({ rowData }) => rowData));
     await client.query("UPDATE import_jobs SET status='imported',imported_rows=$2,completed_at=CURRENT_TIMESTAMP WHERE id=$1 AND status='ready'", [id, rows.length]);
     await client.query("INSERT INTO audit_logs (id,actor_type,actor_id,action,entity_type,entity_id,changed_fields) VALUES ($1,'admin',$2,'import','import_job',$3,$4)", [randomUUID(), actor, id, { imported_rows: rows.length }]); return { importedRows: rows.length };
     });

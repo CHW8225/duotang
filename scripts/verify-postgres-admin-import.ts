@@ -15,6 +15,7 @@ if (!testUrl) {
 
 process.env.DATABASE_URL = testUrl;
 const { confirmImportJob, createImportPreview } = await import("../src/lib/admin-import-repository");
+const { createRecord } = await import("../src/lib/db");
 const { closePostgresConnection } = await import("../src/lib/postgres");
 const pool = new Pool({ ...buildPostgresPoolConfig({ ...process.env, DATABASE_URL: testUrl }), max: 6 });
 const firstConnection = await pool.connect();
@@ -56,11 +57,26 @@ try {
   ]);
   assert(concurrent.filter(({ status }) => status === "fulfilled").length === 1, "concurrent same ID/DOI imports did not allow exactly one batch");
   assert(concurrent.filter(({ status }) => status === "rejected").length === 1, "concurrent same ID/DOI imports did not reject exactly one batch");
-  const inserted = await pool.query("SELECT id, pg_typeof(data_quality_flags)::text quality_type, data_quality_flags FROM polysaccharide_records WHERE upload_id=$1", [sharedUpload]);
+  const inserted = await pool.query("SELECT id, sort_order, pg_typeof(data_quality_flags)::text quality_type, data_quality_flags FROM polysaccharide_records WHERE upload_id=$1", [sharedUpload]);
   assert(inserted.rowCount === 1, "concurrent import inserted an unexpected number of records");
   assert(inserted.rows[0].quality_type === "jsonb" && Array.isArray(inserted.rows[0].data_quality_flags), "data_quality_flags is not valid jsonb");
   const successfulJob = concurrent[0].status === "fulfilled" ? first.id : second.id;
   await confirmImportJob(successfulJob, "integration").then(() => { throw new Error("import task confirmed more than once"); }, () => undefined);
+
+  const importedSortOrders = inserted.rows.map(({ sort_order }) => Number(sort_order));
+  const createUpload = `${prefix}-create-after-import`;
+  const source = records[0] as PolysaccharideRecord;
+  const created = await createRecord({
+    ...source,
+    id: "",
+    upload_id: createUpload,
+    doi: `10.9999/${prefix}-create-after-import`,
+  }, "integration");
+  const createdResult = await pool.query("SELECT sort_order FROM polysaccharide_records WHERE id=$1", [created.id]);
+  const createdSortOrder = Number(createdResult.rows[0]?.sort_order);
+  const allSortOrders = [...importedSortOrders, createdSortOrder];
+  assert(createdSortOrder > Math.max(...importedSortOrders), "createRecord sequence value was not strictly greater than imported sort_order");
+  assert(new Set(allSortOrders).size === allSortOrders.length, "import and createRecord produced duplicate sort_order values");
 
   const insertFailureUpload = `${prefix}-insert-failure`;
   const insertFailure = await createImportPreview("insert-failure.xlsx", "integration", [parsedRow(insertFailureUpload, `10.9999/${prefix}-insert-failure`)]);

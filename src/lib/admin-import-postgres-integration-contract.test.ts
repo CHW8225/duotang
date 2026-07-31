@@ -13,5 +13,9 @@ describe("真实 PostgreSQL 导入验证脚本契约", () => {
     expect(source).toContain("audit failure");
     expect(source).toContain("data_quality_flags");
     expect(source).toContain("jsonb");
+    expect(source).toContain("createRecord");
+    expect(source).toContain("sort_order");
+    expect(source).toMatch(/createdSortOrder[\s\S]*importedSortOrders/);
+    expect(source).toContain("new Set");
   });
 });
