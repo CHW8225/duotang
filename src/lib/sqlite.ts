@@ -105,7 +105,10 @@ function createSchema(database: Database.Database) {
       data_quality_flags TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      sort_order INTEGER NOT NULL
+      sort_order INTEGER NOT NULL,
+      deleted_at TEXT,
+      deleted_by TEXT,
+      deletion_reason TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_records_standard_name
       ON polysaccharide_records (standard_name);
@@ -120,6 +123,15 @@ function createSchema(database: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at
       ON admin_sessions (expires_at);
   `);
+  const existingColumns = new Set(
+    (database.prepare("PRAGMA table_info(polysaccharide_records)").all() as { name: string }[])
+      .map(({ name }) => name),
+  );
+  for (const column of ["deleted_at", "deleted_by", "deletion_reason"]) {
+    if (!existingColumns.has(column)) {
+      database.exec(`ALTER TABLE polysaccharide_records ADD COLUMN "${column}" TEXT`);
+    }
+  }
 }
 
 function initialize(database: Database.Database) {
@@ -173,16 +185,23 @@ export function closeDatabaseConnection() {
   delete sqliteGlobal.polysaccharideDatabase;
 }
 
-export function selectRecords(): PolysaccharideRecord[] {
+export function selectRecords(options: { includeDeleted?: boolean } = {}): PolysaccharideRecord[] {
   const rows = getDatabase()
-    .prepare("SELECT * FROM polysaccharide_records ORDER BY sort_order DESC")
+    .prepare(`SELECT * FROM polysaccharide_records${
+      options.includeDeleted ? "" : " WHERE deleted_at IS NULL"
+    } ORDER BY sort_order DESC`)
     .all() as Record<string, unknown>[];
   return rows.map(rowToRecord);
 }
 
-export function selectRecordById(id: string): PolysaccharideRecord | null {
+export function selectRecordById(
+  id: string,
+  options: { includeDeleted?: boolean } = {},
+): PolysaccharideRecord | null {
   const row = getDatabase()
-    .prepare("SELECT * FROM polysaccharide_records WHERE id = ?")
+    .prepare(`SELECT * FROM polysaccharide_records WHERE id = ?${
+      options.includeDeleted ? "" : " AND deleted_at IS NULL"
+    }`)
     .get(id) as Record<string, unknown> | undefined;
   return row ? rowToRecord(row) : null;
 }

@@ -4,6 +4,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { insertAdminSession, selectAdminSession } from "./sqlite";
+import {
+  insertPostgresAdminSession,
+  selectPostgresAdminSession,
+} from "./postgres";
+import { resolveDatabaseBackend } from "./db";
 
 export type AdminSession = { username: string; authenticatedAt: string };
 export type StoredAdminSession = AdminSession & { id: string; expiresAt: string };
@@ -46,13 +51,19 @@ export async function createStoredAdminSession(username: string): Promise<Stored
     authenticatedAt: authenticatedAt.toISOString(),
     expiresAt: new Date(authenticatedAt.getTime() + SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
   };
-  insertAdminSession(session);
+  if (resolveDatabaseBackend() === "postgres") {
+    await insertPostgresAdminSession(session);
+  } else {
+    insertAdminSession(session);
+  }
   return session;
 }
 
 export async function getStoredAdminSession(id: string): Promise<StoredAdminSession | null> {
   if (!id || !isAdminConfigured()) return null;
-  const session = selectAdminSession(id);
+  const session = resolveDatabaseBackend() === "postgres"
+    ? await selectPostgresAdminSession(id)
+    : selectAdminSession(id);
   return session?.username === process.env.ADMIN_USERNAME ? session : null;
 }
 

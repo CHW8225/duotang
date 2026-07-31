@@ -5,6 +5,9 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import records from "../../data/import/polysaccharide-records.json";
+import { FIELD_DEFINITIONS, type PolysaccharideRecord } from "./fields";
+
 const environment = { ...process.env };
 const temporaryDirectories: string[] = [];
 
@@ -34,6 +37,17 @@ afterEach(async () => {
 });
 
 describe("SQLite record database", () => {
+  it("selects PostgreSQL only when DATABASE_URL is configured", async () => {
+    const { resolveDatabaseBackend } = await import("./db");
+
+    expect(resolveDatabaseBackend({ DATABASE_URL: "postgresql://db/app" })).toBe(
+      "postgres",
+    );
+    expect(resolveDatabaseBackend({ DATABASE_PATH: "C:\\data\\app.sqlite3" })).toBe(
+      "sqlite",
+    );
+  });
+
   it("uses the local runtime default during development", async () => {
     const directory = await mkdtemp(join(tmpdir(), "polysaccharide-default-"));
     temporaryDirectories.push(directory);
@@ -173,5 +187,76 @@ describe("SQLite record database", () => {
       standard_name: "Updated record",
       created_at: created.created_at,
     });
+  });
+
+  it("hides soft-deleted records publicly while retaining an admin query", async () => {
+    await useTemporaryDatabase();
+    const database = await import("./db");
+    const sqlite = await import("./sqlite");
+    const [record] = await database.getRecords();
+
+    sqlite.getDatabase().prepare(`
+      UPDATE polysaccharide_records
+      SET deleted_at = ?, deleted_by = ?, deletion_reason = ?
+      WHERE id = ?
+    `).run(new Date().toISOString(), "admin", "duplicate", record.id);
+
+    await expect(database.getRecordById(record.id)).resolves.toBeNull();
+    await expect(database.getRecords()).resolves.toHaveLength(771);
+    await expect(database.getRecordsIncludingDeleted()).resolves.toHaveLength(772);
+    await expect(database.getRecordByIdIncludingDeleted(record.id)).resolves.toMatchObject({
+      id: record.id,
+    });
+  });
+
+  it("upgrades an existing SQLite schema with soft-delete columns", async () => {
+    const databasePath = await useTemporaryDatabase();
+    const legacy = new Database(databasePath);
+    const [record] = records as PolysaccharideRecord[];
+    const scientificColumns = FIELD_DEFINITIONS.map(({ key }) =>
+      `"${key}" ${key === "publication_year" ? "INTEGER" : "TEXT NOT NULL DEFAULT ''"}`,
+    ).join(", ");
+    legacy.exec(`
+      CREATE TABLE app_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      INSERT INTO app_metadata (key, value) VALUES ('seed_initialized', '1');
+      CREATE TABLE polysaccharide_records (
+        id TEXT PRIMARY KEY, ${scientificColumns}, data_quality_flags TEXT NOT NULL,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, sort_order INTEGER NOT NULL
+      );
+      CREATE TABLE admin_sessions (
+        id TEXT PRIMARY KEY, username TEXT NOT NULL,
+        authenticated_at TEXT NOT NULL, expires_at TEXT NOT NULL
+      );
+    `);
+    const columns = [
+      "id",
+      ...FIELD_DEFINITIONS.map(({ key }) => key),
+      "data_quality_flags",
+      "created_at",
+      "updated_at",
+      "sort_order",
+    ];
+    legacy.prepare(`INSERT INTO polysaccharide_records (${columns
+      .map((column) => `"${column}"`)
+      .join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`).run(
+      ...columns.map((column) => {
+        if (column === "sort_order") return 1;
+        if (column === "data_quality_flags") return JSON.stringify(record.data_quality_flags);
+        return record[column as keyof PolysaccharideRecord];
+      }),
+    );
+    legacy.close();
+
+    const database = await import("./db");
+
+    await expect(database.getRecords()).resolves.toHaveLength(1);
+    const sqlite = await import("./sqlite");
+    expect(
+      sqlite.getDatabase().prepare("PRAGMA table_info(polysaccharide_records)").all(),
+    ).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "deleted_at" }),
+      expect.objectContaining({ name: "deleted_by" }),
+      expect.objectContaining({ name: "deletion_reason" }),
+    ]));
   });
 });
