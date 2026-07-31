@@ -1,0 +1,9 @@
+"use client";
+import { useActionState } from "react";
+import type { Attachment } from "@/lib/attachment-repository";
+import type { AttachmentActionState } from "@/app/admin/(protected)/records/[id]/edit/attachment-actions";
+
+export function AdminAttachmentManager({attachments,uploadAction,updateAction,deleteAction}:{attachments:Attachment[];uploadAction:(s:AttachmentActionState,f:FormData)=>Promise<AttachmentActionState>;updateAction:(id:string,f:FormData)=>Promise<void>;deleteAction:(id:string)=>Promise<void>}){
+  const [state,action,pending]=useActionState(uploadAction,{status:"idle"} as AttachmentActionState);
+  return <section className="admin-attachment-panel"><h2>附件管理</h2><p>仅支持 PDF、PNG、JPG，单文件不超过 20 MB，每条记录最多 10 件。</p><form action={action} className="admin-form-grid"><label>选择文件<input name="file" type="file" accept="application/pdf,image/png,image/jpeg" required /></label><label>附件说明<input name="description" maxLength={500}/></label><label><input name="rightsConfirmed" type="checkbox" required/> 已确认拥有版权或公开权限</label><label><input name="isPublic" type="checkbox"/> 在前台公开</label><button className="button" disabled={pending} type="submit">{pending?"正在上传...":"上传附件"}</button></form>{state.message&&<p role={state.status==="error"?"alert":"status"}>{state.message}</p>}<div className="attachment-list">{attachments.map(a=><form action={updateAction.bind(null,a.id)} className="attachment-item" key={a.id}><strong>{a.originalFilename}</strong><span>{(a.byteSize/1024/1024).toFixed(2)} MB</span><input aria-label="附件说明" defaultValue={a.description} maxLength={500} name="description"/><label><input defaultChecked={a.isPublic} name="isPublic" type="checkbox"/>公开</label><button className="button button--secondary">保存</button><button className="button button--danger" formAction={deleteAction.bind(null,a.id)} type="submit">移入附件回收状态</button></form>)}</div></section>;
+}

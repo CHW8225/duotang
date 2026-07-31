@@ -13,15 +13,19 @@
     "test:postgres:integration": "tsx scripts/verify-postgres-integration.ts",
     "test:postgres:user-library": "tsx scripts/verify-postgres-user-library.ts",
     "test:postgres:record-lifecycle": "tsx scripts/verify-postgres-record-lifecycle.ts",
-    "test:postgres:admin-import": "tsx scripts/verify-postgres-admin-import.ts"
+    "test:postgres:admin-import": "tsx scripts/verify-postgres-admin-import.ts",
+    "test:cloud:attachments": "tsx scripts/verify-cloud-attachments.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
+    "cos-nodejs-sdk-v5": "^3.0.0",
     "exceljs": "^4.4.0",
     "next": "16.2.12",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.22.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sharp": "^0.35.3",
     "tencentcloud-sdk-nodejs-ses": "^4.1.271",
     "unzipper": "^0.10.14"
   },

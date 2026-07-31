@@ -156,6 +156,25 @@ function createSchema(database: Database.Database) {
       name TEXT NOT NULL, query_params TEXT NOT NULL, created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL, UNIQUE(user_id, name)
     );
+    CREATE TABLE IF NOT EXISTS record_attachments (
+      id TEXT PRIMARY KEY, record_id TEXT NOT NULL REFERENCES polysaccharide_records(id) ON DELETE RESTRICT,
+      object_key TEXT NOT NULL UNIQUE, original_filename TEXT NOT NULL, mime_type TEXT NOT NULL,
+      byte_size INTEGER NOT NULL CHECK(byte_size>0), description TEXT NOT NULL DEFAULT '',
+      is_public INTEGER NOT NULL DEFAULT 0, rights_confirmed_at TEXT NOT NULL,
+      created_by TEXT NOT NULL, created_at TEXT NOT NULL, deleted_at TEXT, deleted_by TEXT,
+      slot_number INTEGER NOT NULL CHECK(slot_number BETWEEN 1 AND 10),
+      upload_status TEXT NOT NULL CHECK(upload_status IN ('pending','ready'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS attachment_slots
+      ON record_attachments(record_id,slot_number) WHERE deleted_at IS NULL;
+    CREATE TABLE IF NOT EXISTS cos_cleanup_jobs (
+      id TEXT PRIMARY KEY, object_key TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL CHECK(status IN ('pending','processing','completed','failed')) DEFAULT 'pending',
+      attempt_count INTEGER NOT NULL DEFAULT 0, last_error TEXT,
+      next_attempt_at TEXT NOT NULL, locked_until TEXT, alert_required INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL, completed_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_cos_cleanup_due ON cos_cleanup_jobs(status,next_attempt_at);
     CREATE TABLE IF NOT EXISTS import_jobs (
       id TEXT PRIMARY KEY, filename TEXT NOT NULL,
       status TEXT NOT NULL CHECK (status IN ('previewing','invalid','ready','imported','failed')),

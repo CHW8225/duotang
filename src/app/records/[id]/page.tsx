@@ -12,6 +12,8 @@ import { getRecordById } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth-runtime";
 import { getUserLibraryRepository } from "@/lib/user-library";
 import { UserLibraryControls } from "@/components/UserLibraryControls";
+import { RecordAttachments } from "@/components/RecordAttachments";
+import { listRecordAttachments } from "@/lib/attachment-repository";
 import {
   getDisplayDoi,
   getMonosaccharideComposition,
@@ -35,6 +37,7 @@ export default async function RecordPage({
   if (!record) notFound();
   const user = await getCurrentUser();
   const favorite = user ? await getUserLibraryRepository().isFavorite(user.id, id) : false;
+  const attachments = await listRecordAttachments(id);
   const summary = [
     ["来源物种", getBilingualSpeciesName(record.source_species)],
     ["单糖组成", getMonosaccharideComposition(record)],
@@ -74,6 +77,7 @@ export default async function RecordPage({
         页面优先显示规范值；当规范值与原始值不同，可悬停查看原始记录。空白项统一显示“未记录”。
       </p>
       <RecordDetailSections record={record} />
+      <RecordAttachments attachments={attachments} />
     </main>
   );
 }

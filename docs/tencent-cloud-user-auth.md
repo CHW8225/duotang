@@ -12,6 +12,9 @@
 
 ```nginx
 location / {
+    # Server Actions allow 22 MB so multipart metadata has headroom;
+    # application validation still limits each attachment to 20 MiB.
+    client_max_body_size 22m;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header X-Forwarded-Proto $scheme;

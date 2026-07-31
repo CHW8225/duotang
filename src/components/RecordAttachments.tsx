@@ -1,0 +1,2 @@
+import type { Attachment } from "@/lib/attachment-repository";
+export function RecordAttachments({attachments}:{attachments:Attachment[]}){if(!attachments.length)return null;return <section className="detail-section" id="attachments"><h2>公开附件</h2><ul className="record-links">{attachments.map(a=><li key={a.id}><div><strong>{a.description||a.originalFilename}</strong><span>{a.mimeType} · {(a.byteSize/1024/1024).toFixed(2)} MB</span></div><a className="button button--secondary" href={`/attachments/${a.id}/download`}>下载附件</a></li>)}</ul></section>}
