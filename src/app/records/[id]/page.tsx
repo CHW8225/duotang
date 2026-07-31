@@ -9,6 +9,9 @@ import {
   normalizeEvidenceLevel,
 } from "@/lib/terminology";
 import { getRecordById } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth-runtime";
+import { getUserLibraryRepository } from "@/lib/user-library";
+import { UserLibraryControls } from "@/components/UserLibraryControls";
 import {
   getDisplayDoi,
   getMonosaccharideComposition,
@@ -30,6 +33,8 @@ export default async function RecordPage({
   const returnTo = requestedReturn?.startsWith("/database") ? requestedReturn : "/database";
   const record = await getRecordById(id);
   if (!record) notFound();
+  const user = await getCurrentUser();
+  const favorite = user ? await getUserLibraryRepository().isFavorite(user.id, id) : false;
   const summary = [
     ["来源物种", getBilingualSpeciesName(record.source_species)],
     ["单糖组成", getMonosaccharideComposition(record)],
@@ -45,6 +50,7 @@ export default async function RecordPage({
       <p className="eyebrow">记录 {record.upload_id}</p>
       <h1>{record.standard_name || record.english_name || "未命名记录"}</h1>
       <p className="page-intro">{record.english_name}</p>
+      <UserLibraryControls favorite={favorite} loggedIn={Boolean(user)} mode="favorite" recordId={id} />
       <div className="record-statuses">
         <QualityBadge originalValue={record.activity_category} value={normalizePrimaryActivityCategories(record.activity_category).join("、")} />
         <QualityBadge originalValue={record.evidence_level} value={normalizeEvidenceLevel(record.evidence_level)} />

@@ -16,6 +16,7 @@ export function getUserAuthService() {
 
 export async function getCurrentUser() {
   const token=(await cookies()).get(USER_SESSION_COOKIE)?.value ?? "";
+  if(!token) return null;
   return getUserAuthService().getSession(token);
 }
 

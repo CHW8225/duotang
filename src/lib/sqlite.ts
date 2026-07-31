@@ -141,6 +141,16 @@ function createSchema(database: Database.Database) {
       key TEXT PRIMARY KEY, attempt_count INTEGER NOT NULL,
       reset_at TEXT NOT NULL, updated_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS favorites (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      record_id TEXT NOT NULL REFERENCES polysaccharide_records(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL, UNIQUE(user_id, record_id)
+    );
+    CREATE TABLE IF NOT EXISTS saved_searches (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL, query_params TEXT NOT NULL, created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL, UNIQUE(user_id, name)
+    );
   `);
   const existingColumns = new Set(
     (database.prepare("PRAGMA table_info(polysaccharide_records)").all() as { name: string }[])
@@ -261,6 +271,16 @@ export function replaceRecord(record: PolysaccharideRecord) {
     .prepare(`UPDATE polysaccharide_records SET ${assignments} WHERE id = ?`)
     .run(...values, record.id);
   return result.changes === 1 ? record : null;
+}
+
+export function softDeleteRecord(id:string,deletedBy:string,reason:string){
+  const database=getDatabase();
+  const transaction=database.transaction(()=>database.prepare(`
+    UPDATE polysaccharide_records
+    SET deleted_at = ?, deleted_by = ?, deletion_reason = ?
+    WHERE id = ? AND deleted_at IS NULL
+  `).run(new Date().toISOString(),deletedBy,reason,id).changes===1);
+  return transaction.immediate();
 }
 
 export function insertAdminSession(session: StoredSessionData) {

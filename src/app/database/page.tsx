@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { RecordFilters, type FilterOptions } from "@/components/RecordFilters";
 import { RecordTable } from "@/components/RecordTable";
+import { UserLibraryControls } from "@/components/UserLibraryControls";
+import { getCurrentUser } from "@/lib/auth-runtime";
 import { getRecords } from "@/lib/db";
 import {
   activityFacetValues,
@@ -66,6 +68,7 @@ export default async function DatabasePage({
 }) {
   const rawQuery = await searchParams;
   const filters = parseRecordQuery(rawQuery);
+  const user = await getCurrentUser();
   const allRecords = await getRecords();
   const result = queryRecords(allRecords, filters);
   const query = new URLSearchParams();
@@ -86,6 +89,7 @@ export default async function DatabasePage({
         支持名称、物种、活性、单糖组成和 DOI 的联合检索。筛选、排序与分页状态会保留在网址中。
       </p>
       <RecordFilters filters={filters} options={buildOptions(allRecords)} />
+      <UserLibraryControls loggedIn={Boolean(user)} mode="search" query={query.toString()} />
 
       <section className="results-toolbar" aria-label="检索结果控制">
         <div>

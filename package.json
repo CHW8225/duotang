@@ -10,7 +10,8 @@
     "test": "vitest run",
     "verify:import": "python scripts/verify-excel-import.py",
     "migrate:seed:postgres": "tsx scripts/migrate-seed-to-postgres.ts",
-    "test:postgres:integration": "tsx scripts/verify-postgres-integration.ts"
+    "test:postgres:integration": "tsx scripts/verify-postgres-integration.ts",
+    "test:postgres:user-library": "tsx scripts/verify-postgres-user-library.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
