@@ -18,7 +18,12 @@ async function rollbackQuietly(client: { query: (sql: string) => Promise<unknown
 
 async function main() {
   const testUrl = process.env.TEST_POSTGRES_DATABASE_URL?.trim();
-  if (!testUrl) throw new Error("TEST_POSTGRES_DATABASE_URL is required");
+  if (!testUrl) {
+    process.stdout.write(
+      "SKIP: TEST_POSTGRES_DATABASE_URL is not configured; no PostgreSQL checks were run.\n",
+    );
+    return;
+  }
 
   const pool = new Pool(buildPostgresPoolConfig({
     ...process.env,
