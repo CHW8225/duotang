@@ -10,6 +10,7 @@ type QueryOptions = { includeDeleted?: boolean };
 type PostgresGlobal = typeof globalThis & { polysaccharidePool?: Pool };
 
 const postgresGlobal = globalThis as PostgresGlobal;
+export const POSTGRES_DATA_WRITE_LOCK_KEY = 2_026_080_1;
 const scientificColumns = FIELD_DEFINITIONS.map(({ key }) => key);
 const recordColumns = [
   "id",
@@ -95,7 +96,12 @@ function recordValues(record: PolysaccharideRecord) {
 }
 
 export async function insertPostgresRecord(record: PolysaccharideRecord) {
-  return insertPostgresRecordWithClient(getPostgresPool(), record);
+  return withPostgresTransaction((client) =>
+    withPostgresDataWriteLock(client, async () => {
+      await assertPostgresImportIdentityAvailable(client, record.upload_id, record.doi);
+      return insertPostgresRecordWithClient(client, record);
+    }),
+  );
 }
 
 async function insertPostgresAuditLog(
@@ -114,11 +120,14 @@ async function insertPostgresAuditLog(
 
 export function createPostgresRecordWithAudit(record: PolysaccharideRecord, actorId: string) {
   return withPostgresTransaction(async (client) => {
-    const created = await insertPostgresRecordWithClient(client, record);
-    await insertPostgresAuditLog(client, actorId, "create", record.id, {
-      fields: Object.fromEntries(scientificColumns.map((key) => [key, true])),
+    return withPostgresDataWriteLock(client, async () => {
+      await assertPostgresImportIdentityAvailable(client, record.upload_id, record.doi);
+      const created = await insertPostgresRecordWithClient(client, record);
+      await insertPostgresAuditLog(client, actorId, "create", record.id, {
+        fields: Object.fromEntries(scientificColumns.map((key) => [key, true])),
+      });
+      return created;
     });
-    return created;
   });
 }
 
@@ -302,6 +311,31 @@ export async function withPostgresTransaction<T>(work: (client: PoolClient) => P
   } finally {
     client.release();
   }
+}
+
+export async function withPostgresDataWriteLock<T>(
+  client: PostgresQueryExecutor,
+  work: () => Promise<T>,
+) {
+  await client.query("SELECT pg_advisory_xact_lock($1)", [POSTGRES_DATA_WRITE_LOCK_KEY]);
+  return work();
+}
+
+export async function assertPostgresImportIdentityAvailable(
+  client: PostgresQueryExecutor,
+  uploadId: string,
+  doi: string,
+) {
+  const normalizedUploadId = uploadId.trim();
+  const normalizedDoi = doi.trim().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "").toLowerCase();
+  if (!normalizedUploadId && !normalizedDoi) return;
+  const result = await client.query(`
+    SELECT id FROM polysaccharide_records
+    WHERE ($1 <> '' AND upload_id = $1)
+       OR ($2 <> '' AND lower(regexp_replace(trim(doi), '^https?://(dx\\.)?doi\\.org/', '', 'i')) = $2)
+    LIMIT 1
+  `, [normalizedUploadId, normalizedDoi]);
+  if (result.rowCount) throw new Error("上传编号或 DOI 与现有记录冲突");
 }
 
 export async function insertPostgresAdminSession(session: StoredSessionData) {

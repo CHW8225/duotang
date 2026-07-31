@@ -156,6 +156,21 @@ function createSchema(database: Database.Database) {
       name TEXT NOT NULL, query_params TEXT NOT NULL, created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL, UNIQUE(user_id, name)
     );
+    CREATE TABLE IF NOT EXISTS import_jobs (
+      id TEXT PRIMARY KEY, filename TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('previewing','invalid','ready','imported','failed')),
+      total_rows INTEGER NOT NULL DEFAULT 0, valid_rows INTEGER NOT NULL DEFAULT 0,
+      error_rows INTEGER NOT NULL DEFAULT 0, conflict_rows INTEGER NOT NULL DEFAULT 0,
+      warning_rows INTEGER NOT NULL DEFAULT 0, imported_rows INTEGER NOT NULL DEFAULT 0,
+      created_by TEXT NOT NULL, created_at TEXT NOT NULL, completed_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS import_job_rows (
+      id TEXT PRIMARY KEY, import_job_id TEXT NOT NULL REFERENCES import_jobs(id) ON DELETE CASCADE,
+      row_number INTEGER NOT NULL, record_id TEXT, row_data TEXT NOT NULL,
+      errors TEXT NOT NULL DEFAULT '[]', conflicts TEXT NOT NULL DEFAULT '[]', warnings TEXT NOT NULL DEFAULT '[]',
+      UNIQUE(import_job_id, row_number)
+    );
+    CREATE INDEX IF NOT EXISTS idx_import_jobs_created_at ON import_jobs(created_at DESC);
     CREATE TABLE IF NOT EXISTS audit_logs (
       id TEXT PRIMARY KEY,
       actor_type TEXT NOT NULL CHECK (actor_type IN ('admin', 'system')),
@@ -274,7 +289,7 @@ export function insertRecord(record: PolysaccharideRecord) {
   return insert.immediate();
 }
 
-export type AuditAction = "create" | "update" | "soft_delete" | "restore";
+export type AuditAction = "create" | "update" | "soft_delete" | "restore" | "import";
 
 function insertAuditLog(
   database: Database.Database,
