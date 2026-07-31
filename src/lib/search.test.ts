@@ -80,6 +80,19 @@ describe("filterRecords", () => {
     expect(filterRecords(records, { keyword: "  CITRUS " }).map(({ id }) => id)).toEqual(["citrus"]);
   });
 
+  it("filters by DOI and monosaccharide composition keywords", () => {
+    const compositionRecord = record({
+      id: "composition",
+      doi: "10.1016/j.foodchem.2024.138888",
+      monosaccharide_standardized: "Glc:Gal:Man",
+      monosaccharide_original: "glucose, galactose and mannose",
+    });
+
+    expect(filterRecords([compositionRecord], { keyword: "138888" }).map(({ id }) => id)).toEqual(["composition"]);
+    expect(filterRecords([compositionRecord], { keyword: "galactose" }).map(({ id }) => id)).toEqual(["composition"]);
+    expect(filterRecords([compositionRecord], { keyword: "Glc:Gal" }).map(({ id }) => id)).toEqual(["composition"]);
+  });
+
   it("filters by source category", () => {
     expect(filterRecords(records, { sourceCategory: "Fungi" }).map(({ id }) => id)).toEqual(["mushroom"]);
   });

@@ -406,6 +406,16 @@ a:focus-visible {
   white-space: nowrap;
 }
 
+.record-table__doi {
+  max-width: 210px;
+  overflow: hidden;
+  color: var(--teal-dark);
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .record-table__empty {
   color: var(--muted);
   text-align: center;

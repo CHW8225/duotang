@@ -40,11 +40,15 @@ describe("公开界面中文化", () => {
     }
   });
 
-  it("保留结构与审核筛选能力并使用中文标签", () => {
+  it("前台检索区只保留关键词和活性类别", () => {
     const source = readSource("src/components/RecordFilters.tsx");
 
-    expect(source).toContain('["structure_completeness", "结构完整度"]');
-    expect(source).toContain('["review_status", "审核状态"]');
+    expect(source).toContain("搜索名称、物种、活性、DOI");
+    expect(source).toContain('["activity_category", "活性类别"]');
+    expect(source).not.toContain('["source_category", "来源类别"]');
+    expect(source).not.toContain('["evidence_level", "证据等级"]');
+    expect(source).not.toContain('["structure_completeness", "结构完整度"]');
+    expect(source).not.toContain('["review_status", "审核状态"]');
   });
 
   it("无效地址显示中文空状态", () => {
