@@ -268,10 +268,10 @@ describe("filterRecords", () => {
     const snapshot = structuredClone(unsorted);
 
     expect(filterRecords(unsorted, { sortBy: "evidence_level" }).map(({ id }) => id)).toEqual([
-      "vitro",
-      "cell",
-      "animal",
       "unknown",
+      "cell",
+      "vitro",
+      "animal",
     ]);
     expect(unsorted).toEqual(snapshot);
   });

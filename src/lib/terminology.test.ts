@@ -10,6 +10,7 @@ import {
   normalizePrimaryActivityCategories,
   getTerminologyIssues,
   normalizeSourceCategory,
+  normalizeSourceCategories,
   normalizeStructureCompleteness,
 } from "./terminology";
 
@@ -32,16 +33,23 @@ describe("科研术语规范化", () => {
       .toBe("铁皮石斛（Dendrobium officinale Kimura et Migo）");
   });
 
-  it("来源类别统一分隔符、顺序和重复项", () => {
-    expect(normalizeSourceCategory("微生物,植物")).toBe("植物、微生物");
+  it("来源类别只归入植物、动物和微生物三个一级类别", () => {
+    expect(normalizeSourceCategories("真菌,海藻")).toEqual(["植物", "微生物"]);
+    expect(normalizeSourceCategories("微生物,植物")).toEqual(["植物", "微生物"]);
     expect(normalizeSourceCategory("植物/动物")).toBe("植物、动物");
   });
 
-  it("证据等级合并同义写法但保留不同证据层级", () => {
+  it("证据等级按最高已证实层级归入六级阶梯", () => {
+    expect(normalizeEvidenceLevel("")).toBe("未提及");
+    expect(normalizeEvidenceLevel("计算机模拟（分子对接）")).toBe("计算预测");
+    expect(normalizeEvidenceLevel("理化表征实验")).toBe("理化表征");
     expect(normalizeEvidenceLevel("体外实验（in vitro）")).toBe("体外");
-    expect(normalizeEvidenceLevel("动物/细胞/体外")).toBe("体外、细胞、动物");
-    expect(normalizeEvidenceLevel("文献综述")).toBe("综述提及");
-    expect(normalizeEvidenceLevel("体内")).toBe("体内");
+    expect(normalizeEvidenceLevel("动物/细胞/体外")).toBe("体内（动物）");
+    expect(normalizeEvidenceLevel("动物、临床")).toBe("临床");
+    expect(normalizeEvidenceLevel("体内动物实验，需临床试验进一步验证"))
+      .toBe("体内（动物）");
+    expect(normalizeEvidenceLevel("文献综述")).toBe("未提及");
+    expect(normalizeEvidenceLevel("高")).toBe("未提及");
   });
 
   it("实验类型归并为可比较的实验层级", () => {

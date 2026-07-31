@@ -11,10 +11,12 @@ import {
 } from "@/lib/search";
 import {
   getBilingualSpeciesName,
+  EVIDENCE_LEVELS,
   normalizeEvidenceLevel,
   normalizeExperimentType,
   normalizeMonosaccharideComposition,
-  normalizeSourceCategory,
+  normalizeSourceCategories,
+  SOURCE_CATEGORIES,
   normalizeStructureCompleteness,
 } from "@/lib/terminology";
 
@@ -28,8 +30,12 @@ const unique = (values: string[]) =>
 const buildOptions = (records: Awaited<ReturnType<typeof getRecords>>): FilterOptions => ({
   activities: activityFacetValues(records),
   species: unique(records.map((record) => getBilingualSpeciesName(record.source_species))),
-  sourceCategories: unique(records.map((record) => normalizeSourceCategory(record.source_category))),
-  evidenceLevels: unique(records.map((record) => normalizeEvidenceLevel(record.evidence_level))),
+  sourceCategories: SOURCE_CATEGORIES.filter((category) =>
+    records.some((record) => normalizeSourceCategories(record.source_category).includes(category)),
+  ),
+  evidenceLevels: EVIDENCE_LEVELS.filter((level) =>
+    records.some((record) => normalizeEvidenceLevel(record.evidence_level) === level),
+  ),
   experimentTypes: unique(records.map((record) => normalizeExperimentType(record.experiment_type))),
   structureCompleteness: unique(
     records.map((record) => normalizeStructureCompleteness(record.structure_completeness)),

@@ -82,7 +82,7 @@ const speciesNames: Array<[string, string]> = [
   ["Syzygium samarangense", "莲雾"],
 ];
 
-export const TERMINOLOGY_VERSION = "2026-07-31-v2";
+export const TERMINOLOGY_VERSION = "2026-07-31-v3";
 
 const speciesMap = new Map(speciesNames);
 const chineseSpeciesLatinMap = new Map<string, string>([
@@ -141,21 +141,49 @@ export function getBilingualSpeciesName(value: string) {
   return species;
 }
 
-export function normalizeSourceCategory(value: string) {
-  const categories = clean(value).split(/[、,，;；/]+/).map((item) => item.trim()).filter(Boolean);
-  return uniqueOrdered(categories, ["植物", "真菌", "微生物", "动物", "海藻"]).join("、");
+export const SOURCE_CATEGORIES = ["植物", "动物", "微生物"] as const;
+
+export function normalizeSourceCategories(value: string) {
+  const categories = clean(value)
+    .split(/[、,，;；/]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .flatMap((item) => {
+      if (/植物|海藻|plant|algae/i.test(item)) return ["植物"];
+      if (/动物|animal/i.test(item)) return ["动物"];
+      if (/微生物|真菌|microorganism|microbe|fungi|fungus/i.test(item)) return ["微生物"];
+      return [];
+    });
+  return uniqueOrdered(categories, [...SOURCE_CATEGORIES]);
 }
+
+export function normalizeSourceCategory(value: string) {
+  return normalizeSourceCategories(value).join("、");
+}
+
+export const EVIDENCE_LEVELS = [
+  "未提及",
+  "计算预测",
+  "理化表征",
+  "体外",
+  "体内（动物）",
+  "临床",
+] as const;
 
 export function normalizeEvidenceLevel(value: string) {
   const text = clean(value);
-  if (!text) return "";
-  const levels: string[] = [];
-  if (/综述/.test(text)) levels.push("综述提及");
-  if (/体外|in vitro|化学法|发酵/.test(text)) levels.push("体外");
-  if (/细胞/.test(text)) levels.push("细胞");
-  if (/动物|鼠|斑马鱼|模式生物/.test(text)) levels.push("动物");
-  if (/临床/.test(text)) levels.push("临床");
-  return uniqueOrdered(levels, ["综述提及", "体外", "细胞", "动物", "临床"]).join("、") || text;
+  if (!text) return "未提及";
+  const completedEvidence = text.replace(/[，,；;]?\s*需(?:要)?[^，,；;]*?(?:验证|研究).*$/i, "");
+  if (/临床|人体|志愿者/.test(completedEvidence)) return "临床";
+  if (/动物|体内|in vivo|小鼠|大鼠|斑马鱼|模式生物|哺乳动物/i.test(completedEvidence)) {
+    return "体内（动物）";
+  }
+  if (/体外|in vitro|细胞|发酵|模拟消化|淋巴细胞|巨噬细胞|肿瘤细胞/i.test(completedEvidence)) {
+    return "体外";
+  }
+  if (/理化|表征|流变|光谱|色谱|分子量/.test(completedEvidence)) return "理化表征";
+  if (/计算|模拟|预测|分子对接|in silico/i.test(completedEvidence)) return "计算预测";
+  return "未提及";
 }
 
 export function normalizeExperimentType(value: string) {
@@ -388,7 +416,10 @@ export function getTerminologyIssues(record: TerminologyRecord) {
     issues.push("活性大类疑似误填结构完整度");
   }
   const evidence = clean(record.evidence_level);
-  if (evidence && normalizeEvidenceLevel(evidence) === evidence && !/^(体外|细胞|动物|临床|综述提及)$/.test(evidence)) {
+  if (
+    evidence
+    && !/未提及|综述|计算|模拟|预测|分子对接|理化|表征|流变|光谱|色谱|分子量|体外|in vitro|细胞|发酵|动物|体内|in vivo|临床|人体|志愿者|淋巴细胞|巨噬细胞|肿瘤细胞/i.test(evidence)
+  ) {
     issues.push("证据等级无法归入受控词");
   }
   if (/抗氧化|抗炎|抗肿瘤|降糖|降血糖|降脂|降血脂/.test(record.structure_completeness)) {

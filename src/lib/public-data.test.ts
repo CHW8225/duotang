@@ -33,6 +33,19 @@ describe("public database summaries", () => {
     expect(topValues(variants, "activity_category")).toEqual([["抗氧化", 2]]);
   });
 
+  it("counts mixed sources once in each matching primary category", () => {
+    const mixedSources = [
+      { ...records[0], source_category: "植物、动物" },
+      { ...records[1], source_category: "真菌" },
+    ] as PolysaccharideRecord[];
+
+    expect(topValues(mixedSources, "source_category")).toEqual([
+      ["植物", 1],
+      ["动物", 1],
+      ["微生物", 1],
+    ]);
+  });
+
   it("counts every recorded quality flag across affected records", () => {
     expect(countQualityFlags(records)).toEqual({ missing_doi: 2, missing_conclusion: 1 });
   });

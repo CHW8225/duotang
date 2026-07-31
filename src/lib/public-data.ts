@@ -2,7 +2,7 @@ import type { PolysaccharideRecord } from "./fields";
 import {
   normalizePrimaryActivityCategories,
   normalizeEvidenceLevel,
-  normalizeSourceCategory,
+  normalizeSourceCategories,
 } from "./terminology";
 
 type CategoryField = "source_category" | "activity_category" | "evidence_level";
@@ -18,9 +18,9 @@ export function topValues(
     const rawValue = record[field].trim();
     const values = field === "activity_category"
       ? normalizePrimaryActivityCategories(rawValue)
-      : [field === "source_category"
-          ? normalizeSourceCategory(rawValue)
-          : normalizeEvidenceLevel(rawValue)];
+      : field === "source_category"
+          ? normalizeSourceCategories(rawValue)
+          : [normalizeEvidenceLevel(rawValue)];
     values.filter(Boolean).forEach((value) => {
       counts.set(value, (counts.get(value) ?? 0) + 1);
     });

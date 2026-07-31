@@ -5,12 +5,14 @@ import {
 } from "./display";
 import {
   getBilingualSpeciesName,
+  EVIDENCE_LEVELS,
   normalizeActivityCategories,
   normalizePrimaryActivityCategories,
   PRIMARY_ACTIVITY_CATEGORIES,
   normalizeEvidenceLevel,
   normalizeExperimentType,
   normalizeSourceCategory,
+  normalizeSourceCategories,
   normalizeStructureCompleteness,
 } from "./terminology";
 
@@ -61,7 +63,7 @@ const SORT_VALUES = new Set<RecordSort>([
   "evidence_level",
   "review_status",
 ]);
-const EVIDENCE_ORDER = ["综述提及", "体外", "细胞", "动物", "临床"];
+const EVIDENCE_ORDER = [...EVIDENCE_LEVELS];
 
 const searchableText = (record: PolysaccharideRecord) =>
   [
@@ -106,8 +108,7 @@ const queryNumber = (value: string | string[] | undefined) => {
 const normalizedText = (value: string) => value.trim().toLowerCase();
 
 const evidenceRank = (value: string) => {
-  const levels = normalizeEvidenceLevel(value).split("、");
-  const rank = Math.max(...levels.map((level) => EVIDENCE_ORDER.indexOf(level)));
+  const rank = EVIDENCE_ORDER.indexOf(normalizeEvidenceLevel(value));
   return rank === -1 ? EVIDENCE_ORDER.length : rank;
 };
 
@@ -125,7 +126,7 @@ export function filterRecords(records: PolysaccharideRecord[], filters: RecordFi
     ? normalizePrimaryActivityCategories(filters.activityCategory)[0] ?? ""
     : "";
   const sourceCategory = filters.sourceCategory
-    ? normalizeSourceCategory(filters.sourceCategory)
+    ? normalizeSourceCategories(filters.sourceCategory)[0] ?? ""
     : "";
   const evidenceLevel = filters.evidenceLevel
     ? normalizeEvidenceLevel(filters.evidenceLevel)
@@ -151,7 +152,7 @@ export function filterRecords(records: PolysaccharideRecord[], filters: RecordFi
     }
     if (
       sourceCategory
-      && normalizeSourceCategory(record.source_category) !== sourceCategory
+      && !normalizeSourceCategories(record.source_category).includes(sourceCategory)
     ) return false;
     if (activityCategory && !activityFacets(record.activity_category).includes(activityCategory)) return false;
     if (
